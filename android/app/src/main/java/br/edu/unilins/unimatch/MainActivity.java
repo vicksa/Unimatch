@@ -1,109 +1,94 @@
 package br.edu.unilins.unimatch;
 
-import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
-import android.content.pm.ResolveInfo;
 import android.graphics.Color;
 import android.graphics.Typeface;
-import android.graphics.drawable.GradientDrawable;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.Gravity;
 import android.view.View;
-import android.view.WindowInsets;
+import android.webkit.CookieManager;
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
+import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
-import java.util.List;
+import android.widget.Toast;
+import androidx.activity.OnBackPressedCallback;
+import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.BridgeWebViewClient;
 
-/** Browser-powered Android client. Never receives passwords, cookies or auth tokens. */
-public final class MainActivity extends Activity {
+/** The trusted UniMatch site runs in the app's own WebView, with no browser toolbar. */
+public final class MainActivity extends BridgeActivity {
     static final String ORIGIN = "https://unimatch-unilins.vercel.app";
-    private static final int BLUE = Color.rgb(23,73,209);
-    private static final int INK = Color.rgb(32,37,45);
-    private static final int MUTED = Color.rgb(98,107,121);
+    private View connectionError;
 
     @Override public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(NativeDownloadsPlugin.class);
         super.onCreate(savedInstanceState);
-        ScrollView scroll = new ScrollView(this);
-        scroll.setBackgroundColor(Color.WHITE);
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        int pad = dp(28);
-        root.setPadding(pad,pad,pad,pad);
-        scroll.addView(root);
-        scroll.setOnApplyWindowInsetsListener((view,insets)-> {
-            android.graphics.Insets bars;
-            if (android.os.Build.VERSION.SDK_INT >= 30) {
-                bars = insets.getInsets(WindowInsets.Type.systemBars());
-                view.setPadding(bars.left,bars.top,bars.right,bars.bottom);
-            } else { view.setPadding(insets.getSystemWindowInsetLeft(),insets.getSystemWindowInsetTop(),insets.getSystemWindowInsetRight(),insets.getSystemWindowInsetBottom()); }
-            return insets;
+        if (bridge == null) return;
+        WebView web = bridge.getWebView();
+        web.getSettings().setAllowFileAccess(false);
+        web.getSettings().setMediaPlaybackRequiresUserGesture(true);
+        CookieManager.getInstance().setAcceptCookie(true);
+        CookieManager.getInstance().setAcceptThirdPartyCookies(web, false);
+        connectionError = makeConnectionError();
+        addContentView(connectionError, new android.view.ViewGroup.LayoutParams(-1,-1));
+        connectionError.setVisibility(View.GONE);
+        bridge.setWebViewClient(new BridgeWebViewClient(bridge) {
+            @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                if (!request.isForMainFrame()) return super.shouldOverrideUrlLoading(view, request);
+                if (isAppUrl(request.getUrl())) return false;
+                if (request.hasGesture()) openExternal(request.getUrl());
+                return true;
+            }
+            @Override public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                super.onPageStarted(view,url,favicon);
+                connectionError.setVisibility(View.GONE);
+            }
+            @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                super.onReceivedError(view,request,error);
+                if (request.isForMainFrame()) connectionError.setVisibility(View.VISIBLE);
+            }
+            @Override public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
+                super.onReceivedHttpError(view,request,response);
+                if (request.isForMainFrame() && response.getStatusCode() >= 400) connectionError.setVisibility(View.VISIBLE);
+            }
         });
-        root.addView(text("UniMatch",34,INK,true,0));
-        root.addView(text("COMUNIDADE UNILINS",12,MUTED,true,2));
-        root.addView(text("Quem você ainda\nnão conhece?",36,INK,true,68));
-        root.addView(text("Um campus. Muitas histórias.",17,MUTED,false,18));
-        root.addView(text("Conheça pessoas de outros cursos, encontre interesses em comum e converse depois do match.",17,INK,false,36));
-        root.addView(button("Abrir UniMatch",true,()->openPilot()));
-        root.addView(text("Este APK conecta você ao piloto online. A interface e o login são exibidos pelo navegador seguro do Android, com sua sessão existente.",14,MUTED,false,16));
-        root.addView(button("Privacidade e regras",false,()->showPrivacy()));
-        root.addView(text("Piloto independente · Somente 18+\nSem integração com o portal acadêmico. Entre com Google ou e-mail e senha e crie seu perfil para participar.",13,MUTED,false,36));
-        root.addView(text("Versão 0.2.0 · Android",12,MUTED,false,24));
-        setContentView(scroll);
-        scroll.requestApplyInsets();
+        web.setDownloadListener((url,agent,disposition,mime,length) -> openExternal(Uri.parse(url)));
+        getOnBackPressedDispatcher().addCallback(this,new OnBackPressedCallback(true) {
+            @Override public void handleOnBackPressed() {
+                if (connectionError.getVisibility()==View.VISIBLE) { finish(); return; }
+                web.evaluateJavascript("Boolean(window.unimatchAndroidBack && window.unimatchAndroidBack())",result -> {
+                    if ("true".equals(result)) return;
+                    if (web.canGoBack()) web.goBack(); else finish();
+                });
+            }
+        });
     }
 
-    private void openPilot() {
-        Uri uri=Uri.parse(ORIGIN+"/");
-        Intent intent=new Intent(Intent.ACTION_VIEW,uri);
-        intent.addCategory(Intent.CATEGORY_BROWSABLE);
-        // Custom Tabs protocol: null SESSION means a browser-managed session.
-        Bundle extras=new Bundle();
-        extras.putBinder("android.support.customtabs.extra.SESSION",null);
-        extras.putInt("android.support.customtabs.extra.TOOLBAR_COLOR",BLUE);
-        extras.putInt("android.support.customtabs.extra.TITLE_VISIBILITY",1);
-        extras.putBoolean("android.support.customtabs.extra.ENABLE_URLBAR_HIDING",false);
-        intent.putExtras(extras);
-        Intent browserProbe=new Intent(Intent.ACTION_VIEW,uri).addCategory(Intent.CATEGORY_BROWSABLE);
-        ResolveInfo preferred=getPackageManager().resolveActivity(browserProbe,0);
-        if(preferred!=null && supportsTabs(preferred.activityInfo.packageName)) {
-            intent.setPackage(preferred.activityInfo.packageName);
-        } else {
-            List<ResolveInfo> browsers=getPackageManager().queryIntentActivities(browserProbe,0);
-            for(ResolveInfo browser:browsers) {
-                if(supportsTabs(browser.activityInfo.packageName)) {
-                    intent.setPackage(browser.activityInfo.packageName);break;
-                }
-            }
+    static boolean isAppUrl(Uri uri) {
+        return "https".equalsIgnoreCase(uri.getScheme()) && "unimatch-unilins.vercel.app".equalsIgnoreCase(uri.getHost())
+            && uri.getUserInfo()==null && (uri.getPort()==-1 || uri.getPort()==443);
+    }
+    private void openExternal(Uri uri) {
+        if (!"https".equalsIgnoreCase(uri.getScheme())) {
+            Toast.makeText(this,"Esse arquivo não pode ser aberto pelo navegador.",Toast.LENGTH_SHORT).show(); return;
         }
-        try { startActivity(intent); }
-        catch(ActivityNotFoundException e) {
-            new AlertDialog.Builder(this).setTitle("Navegador necessário")
-                .setMessage("Instale ou ative um navegador com suporte a HTTPS, como o Chrome, para abrir o UniMatch.")
-                .setPositiveButton("Entendi",null).show();
-        }
+        try { startActivity(new Intent(Intent.ACTION_VIEW,uri).addCategory(Intent.CATEGORY_BROWSABLE)); }
+        catch (ActivityNotFoundException e) { Toast.makeText(this,"Nenhum app disponível para abrir esse link.",Toast.LENGTH_SHORT).show(); }
     }
-    private boolean supportsTabs(String packageName) {
-        Intent service=new Intent("android.support.customtabs.action.CustomTabsService").setPackage(packageName);
-        return getPackageManager().resolveService(service,0)!=null;
+    private View makeConnectionError() {
+        LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setGravity(Gravity.CENTER);
+        panel.setBackgroundColor(Color.WHITE);int padding=Math.round(32*getResources().getDisplayMetrics().density);panel.setPadding(padding,padding,padding,padding);
+        TextView title=new TextView(this);title.setText("Vamos reconectar?");title.setTextSize(26);title.setTypeface(null,Typeface.BOLD);title.setTextColor(Color.rgb(32,37,45));panel.addView(title);
+        TextView text=new TextView(this);text.setText("Confira sua conexão e tente novamente. Seu perfil continua salvo na sua conta.");text.setTextSize(16);text.setGravity(Gravity.CENTER);text.setPadding(0,24,0,24);panel.addView(text);
+        Button retry=new Button(this);retry.setText("Tentar novamente");retry.setAllCaps(false);retry.setOnClickListener(v->{connectionError.setVisibility(View.GONE);bridge.reload();});panel.addView(retry);
+        return panel;
     }
-    private void showPrivacy() {
-        new AlertDialog.Builder(this).setTitle("Privacidade no UniMatch")
-            .setMessage("O APK não recebe nem armazena sua senha, cookies ou mensagens. O navegador gerencia o login. Não há permissões de câmera, localização, contatos ou arquivos no APK.\n\nOs dados do perfil e as conversas ficam no serviço online. Mensagens não têm criptografia de ponta a ponta. Consulte os termos dentro do piloto antes de cadastrar dados reais.\n\nEste é um piloto independente e exclusivo para maiores de 18 anos. Denúncias precisam de uma equipe de moderação configurada.")
-            .setPositiveButton("Entendi",null).show();
-    }
-    private TextView text(String value,int size,int color,boolean bold,int top) {
-        TextView view=new TextView(this);view.setText(value);view.setTextSize(size);view.setTextColor(color);
-        view.setTypeface(Typeface.create("sans-serif",bold?Typeface.BOLD:Typeface.NORMAL));
-        view.setLineSpacing(dp(4),1);LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,-2);params.topMargin=dp(top);view.setLayoutParams(params);return view;
-    }
-    private Button button(String value,boolean filled,Runnable action) {
-        Button view=new Button(this);view.setText(value);view.setAllCaps(false);view.setTextSize(16);view.setTextColor(filled?Color.WHITE:BLUE);
-        GradientDrawable background=new GradientDrawable();background.setColor(filled?BLUE:Color.WHITE);background.setCornerRadius(dp(10));if(!filled)background.setStroke(dp(1),Color.rgb(220,225,233));view.setBackground(background);
-        view.setPadding(dp(18),dp(12),dp(18),dp(12));view.setMinHeight(dp(54));LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,-2);params.topMargin=dp(24);view.setLayoutParams(params);view.setOnClickListener(v->action.run());return view;
-    }
-    private int dp(int value){return Math.round(value*getResources().getDisplayMetrics().density);}
+    @Override public void onPause() { super.onPause(); CookieManager.getInstance().flush(); }
 }
