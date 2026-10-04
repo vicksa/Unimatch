@@ -12,6 +12,12 @@ try{
  await migrate('0001_profile_details.sql');await migrate('0001_profile_details.sql');
  const [row]=await sql.query("SELECT * FROM profiles WHERE id='legacy'");assert.equal(row.name,'Original');assert.equal(row.approved,0);assert.equal(row.photo,'existing-private.png');assert.equal(row.gender,'Prefiro não informar');assert.equal(row.age_min,18);assert.equal(row.age_max,100);assert.deepEqual(row.looking_for,[]);assert.deepEqual(row.prompts,[]);
  const gallery=await sql.query("SELECT slot,key FROM profile_photos WHERE profile_id='legacy'");assert.deepEqual(gallery,[{slot:0,key:'existing-private.png'}]);
+ await sql.query("INSERT INTO profiles(id,name,course,semester,age,bio,interests,intent,consent_at,created_at) VALUES ('peer','Peer','Psicologia',3,22,'','[]','Amizade','now','now')");
+ await sql.query("INSERT INTO matches(id,a,b,created_at) VALUES ('legacy-match','legacy','peer','now')");
+ await sql.query("INSERT INTO messages(id,match_id,sender,body,created_at) VALUES ('legacy-message','legacy-match','legacy','Preserve this history','now')");
+ await migrate('0004_chat_encryption.sql');await migrate('0004_chat_encryption.sql');
+ const old=(await sql.query("SELECT body,encryption_version,envelope FROM messages WHERE id='legacy-message'"))[0];assert.equal(old.body,'Preserve this history');assert.equal(old.encryption_version,0);assert.equal(old.envelope,null);
+ await assert.rejects(sql.query("INSERT INTO messages(id,match_id,sender,body,created_at,encryption_version,envelope) VALUES ('invalid','legacy-match','legacy','plaintext','now',1,'{}')"));
  await sql.query("DELETE FROM profiles WHERE id='legacy'");assert.equal((await sql.query('SELECT * FROM profile_photos')).length,0);
  console.log('Postgres upgrade preserves legacy profiles, suspensions and private photos; reruns and cascades: OK');
 }finally{await admin.query(`DROP SCHEMA ${schema} CASCADE`)}

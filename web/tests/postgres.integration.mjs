@@ -15,5 +15,6 @@ try{
   }
   const result=spawnSync(process.execPath,['--test','tests/api.integration.mjs'],{stdio:'inherit',env:{...process.env,DATABASE_URL:testUrl,TEST_DATABASE_SCHEMA:schema}});
   process.exitCode=result.status??1;
-  if(result.status===0){const upgrade=spawnSync(process.execPath,['tests/postgres-migration.integration.mjs'],{stdio:'inherit',env:process.env});process.exitCode=upgrade.status??1;}
+  if(result.status===0){const encrypted=spawnSync(process.execPath,['--test','tests/chat-api.integration.mjs'],{stdio:'inherit',env:{...process.env,DATABASE_URL:testUrl,TEST_DATABASE_SCHEMA:schema}});process.exitCode=encrypted.status??1;}
+  if(result.status===0&&process.exitCode===0){const upgrade=spawnSync(process.execPath,['tests/postgres-migration.integration.mjs'],{stdio:'inherit',env:process.env});process.exitCode=upgrade.status??1;}
 }finally{await admin.query(`DROP SCHEMA ${schema} CASCADE`);}

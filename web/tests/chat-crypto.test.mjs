@@ -1,0 +1,53 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+const require=createRequire(import.meta.resolve('wrangler'));
+const {build}=require('esbuild');
+await build({entryPoints:['lib/chat-crypto.ts','lib/chat-server.ts'],outdir:'.sites-runtime/crypto-tests',bundle:true,format:'esm',platform:'node',packages:'external'});
+const {createChatKey,restoreChatKey,encryptChatMessage,decryptChatMessage,keyFingerprint}=await import('../.sites-runtime/crypto-tests/chat-crypto.js');
+const {keyRegistrationSchema,encryptedMessageSchema,verifyEnvelope}=await import('../.sites-runtime/crypto-tests/chat-server.js');
+const [alice,bob,mallory]=await Promise.all(['alice','bob','mallory'].map(createChatKey));
+const keys=[alice.local,bob.local];const context=crypto.randomUUID();
+const secret='Olá! 🎮 <script>isto continua sendo texto</script>';
+const envelope=await encryptChatMessage(alice.local,keys,'match-ab',secret,context);
+test('only the sender and intended recipient can open a signed encrypted message',async()=>{
+ assert.equal(await decryptChatMessage(alice.local,alice.local,'match-ab','alice',envelope,context),secret);
+ assert.equal(await decryptChatMessage(bob.local,alice.local,'match-ab','alice',envelope,context),secret);
+ await assert.rejects(decryptChatMessage(mallory.local,alice.local,'match-ab','alice',envelope,context));
+ assert.equal(JSON.stringify(envelope).includes(secret),false);
+ assert.equal(verifyEnvelope('match-ab','alice',envelope,keys),true);
+ assert.equal(encryptedMessageSchema.safeParse({match:'match-ab',envelope}).success,true);
+ assert.equal(encryptedMessageSchema.safeParse({match:'match-ab',body:secret}).success,false);
+});
+test('signature and context binding reject tampering, forged sender and cross-conversation replay',async()=>{
+ const tampered={...envelope,ciphertext:(envelope.ciphertext[0]==='A'?'B':'A')+envelope.ciphertext.slice(1)};
+ await assert.rejects(decryptChatMessage(bob.local,alice.local,'match-ab','alice',tampered,context));
+ assert.equal(verifyEnvelope('match-ab','alice',tampered,keys),false);
+ await assert.rejects(decryptChatMessage(bob.local,alice.local,'match-ab','alice',envelope,crypto.randomUUID()));
+ assert.equal(verifyEnvelope('match-other','alice',envelope,keys),false);
+ assert.equal(verifyEnvelope('match-ab','bob',envelope,keys),false);
+ await assert.rejects(decryptChatMessage(bob.local,alice.local,'match-other','alice',envelope,context));
+ assert.equal(verifyEnvelope('match-ab','alice',{...envelope,recipients:[envelope.recipients[0],envelope.recipients[0]]},keys),false);
+});
+test('encrypted backup recovers the same identity on another device without exposing private keys',async()=>{
+ const restored=await restoreChatKey(alice.local,alice.backup,alice.recoveryCode);
+ assert.equal(await decryptChatMessage(restored,alice.local,'match-ab','alice',envelope,context),secret);
+ assert.equal(await keyFingerprint(restored),await keyFingerprint(alice.local));
+ assert.equal(restored.encryptionPrivateKey.extractable,false);
+ assert.equal(restored.signingPrivateKey.extractable,false);
+ await assert.rejects(crypto.subtle.exportKey('jwk',restored.encryptionPrivateKey));
+ await assert.rejects(restoreChatKey(alice.local,alice.backup,bob.recoveryCode));
+ await assert.rejects(restoreChatKey({...alice.local,userId:'mallory'},alice.backup,alice.recoveryCode));
+ assert.equal(keyRegistrationSchema.safeParse({keyId:alice.local.keyId,encryptionPublicKey:alice.local.encryptionPublicKey,signingPublicKey:alice.local.signingPublicKey,backup:alice.backup}).success,true);
+ assert.equal(JSON.stringify(alice.backup).includes(alice.recoveryCode),false);
+});
+test('fresh messages use unique nonces and keys; Unicode limits and malformed payloads fail closed',async()=>{
+ const second=await encryptChatMessage(alice.local,keys,'match-ab',secret,context);
+ assert.notEqual(second.id,envelope.id);assert.notEqual(second.iv,envelope.iv);assert.notEqual(second.ciphertext,envelope.ciphertext);
+ const unicode=await encryptChatMessage(alice.local,keys,'match-ab','🎮'.repeat(1000),context);
+ assert.equal(encryptedMessageSchema.safeParse({match:'match-ab',envelope:unicode}).success,true);
+ assert.equal((await decryptChatMessage(bob.local,alice.local,'match-ab','alice',unicode,context)).length,2000);
+ await assert.rejects(encryptChatMessage(alice.local,keys,'match-ab','x'.repeat(2001),context));
+ await assert.rejects(encryptChatMessage(alice.local,keys,'match-ab','   ',context));
+ assert.equal(encryptedMessageSchema.safeParse({match:'match-ab',envelope:{...envelope,signature:'bad'}}).success,false);
+});
