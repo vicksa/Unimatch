@@ -23,3 +23,8 @@ test('empty interests have deterministic fallback and inputs are not mutated',()
   assert.equal(profiles[0].id,'a');
   assert.deepEqual(readInterests('invalid JSON'),[]);
 });
+test('pet aliases and favorites match without mixing artists and movies',()=>{
+  assert.deepEqual(commonInterests(['Gatos','Rock','Filme: Interestelar','Artista: Queen'],['cat','ROCK','Filme: INTERESTELAR','Filme: Queen']),['Gatos','Rock','Filme: Interestelar']);
+  assert.deepEqual(canonicalInterests(['cães','Cachorros','gato']),['Cachorros','Gatos']);
+  assert.deepEqual(readInterests(JSON.stringify(['Filme: Três Homens, um Destino'])),['Filme: Três Homens, um Destino']);
+});

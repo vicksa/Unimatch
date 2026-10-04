@@ -12,3 +12,13 @@
 .auth-page{min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:24px;background:#f4f6fb}
 
 .interest-picker{border:0;margin:0;padding:0;min-width:0;display:flex;flex-direction:column;gap:12px;text-align:left}.interest-picker legend{font-weight:600;margin-bottom:8px}.interest-picker p{margin:0}.interest-picker label{display:flex;flex-direction:column;gap:8px;font-size:14px}.interest-options{display:flex;flex-wrap:wrap;gap:8px}.interest-options button{border:1px solid #dce1e9;border-radius:999px;padding:9px 14px;background:#fff;color:#394555;font-size:14px;cursor:pointer}.interest-options button[aria-pressed=true]{background:#1749d1;border-color:#1749d1;color:#fff}.interest-options button:disabled{opacity:.5;cursor:default}.interest-options button:focus-visible{outline:3px solid #8fa8f0;outline-offset:3px}.recommendation-reason{display:flex;align-items:center;gap:8px;color:#1749d1;font-size:13px;line-height:1.5;margin:0 0 14px;flex-wrap:wrap}.entry-panel .interest-picker{max-width:600px;margin:24px auto}.interest-picker input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #dce1e9;border-radius:8px}
+.interest-category{border:1px solid #dce1e9;border-radius:10px;padding:12px}
+.interest-category summary{cursor:pointer;font-weight:600;font-size:14px}
+.interest-category summary span{float:right;font-weight:400;font-size:12px;color:#667085}
+.interest-category[open] .interest-options{margin-top:14px}
+.selected-interests button{background:#edf2ff;color:#1749d1;border-color:#c9d6ff}
+.interest-options button,.interests span{max-width:100%;overflow-wrap:anywhere;text-align:left}
+.favorite-input{display:flex;gap:8px;align-items:center}
+.favorite-input input{min-width:0;flex:1}
+.favorite-input button{flex-shrink:0;padding:12px;font-size:13px}
+.favorite-field{display:flex;flex-direction:column;gap:8px}
