@@ -16,7 +16,7 @@ O APK 0.3 usa Capacitor para exibir o UniMatch dentro de uma WebView própria, s
 
 ## Identidade visual
 
-Logo própria, paleta violeta com superfícies claras e telas organizadas para celular e desktop. A entrada apresenta cadastro/login; a demonstração só abre por escolha explícita e não usa fotos de exemplo. Tokens e regras em `web/DESIGN.md`. As telas do APK 0.3 carregam o novo visual online automaticamente.
+Logo própria, controles em grafite, superfícies neutras e telas organizadas para celular e desktop. A entrada cabe em uma tela e apresenta login/cadastro; a demonstração só abre por escolha explícita e não usa fotos de exemplo. Tokens e regras em `web/DESIGN.md`. As telas do APK 0.3 carregam o novo visual online automaticamente.
 
 ## Estrutura
 
