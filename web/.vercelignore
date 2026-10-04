@@ -1,0 +1,12 @@
+.env*
+!.env.example
+.sites-runtime
+.wrangler
+dist
+build
+tests
+vite.config.ts
+.openai
+AGENTS.md
+CLAUDE.md
+skills-lock.json

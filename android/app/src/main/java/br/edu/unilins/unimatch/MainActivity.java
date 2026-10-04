@@ -20,7 +20,7 @@ import java.util.List;
 
 /** Browser-powered Android client. Never receives passwords, cookies or auth tokens. */
 public final class MainActivity extends Activity {
-    static final String ORIGIN = "https://unimatch-unilins.vicksa.chatgpt.site";
+    static final String ORIGIN = "https://unimatch-unilins.vercel.app";
     private static final int BLUE = Color.rgb(23,73,209);
     private static final int INK = Color.rgb(32,37,45);
     private static final int MUTED = Color.rgb(98,107,121);
@@ -50,8 +50,8 @@ public final class MainActivity extends Activity {
         root.addView(button("Abrir UniMatch",true,()->openPilot()));
         root.addView(text("Este APK conecta você ao piloto online. A interface e o login são exibidos pelo navegador seguro do Android, com sua sessão existente.",14,MUTED,false,16));
         root.addView(button("Privacidade e regras",false,()->showPrivacy()));
-        root.addView(text("Piloto independente · Somente 18+\nSem integração com o portal acadêmico. O acesso ainda é privado; crie seu perfil para participar.",13,MUTED,false,36));
-        root.addView(text("Versão 0.1.0 · Android",12,MUTED,false,24));
+        root.addView(text("Piloto independente · Somente 18+\nSem integração com o portal acadêmico. Entre com Google ou e-mail e senha e crie seu perfil para participar.",13,MUTED,false,36));
+        root.addView(text("Versão 0.2.0 · Android",12,MUTED,false,24));
         setContentView(scroll);
         scroll.requestApplyInsets();
     }
@@ -92,7 +92,7 @@ public final class MainActivity extends Activity {
     }
     private void showPrivacy() {
         new AlertDialog.Builder(this).setTitle("Privacidade no UniMatch")
-            .setMessage("O APK não recebe nem armazena sua senha, cookies ou mensagens. O navegador gerencia o login. Não há permissões de câmera, localização, contatos ou arquivos no APK.\n\nOs dados do perfil e as conversas ficam no serviço online. Mensagens não têm criptografia de ponta a ponta. Consulte os termos dentro do piloto antes de cadastrar dados reais.\n\nEste é um piloto independente, privado e exclusivo para maiores de 18 anos. Denúncias precisam de uma equipe de moderação configurada.")
+            .setMessage("O APK não recebe nem armazena sua senha, cookies ou mensagens. O navegador gerencia o login. Não há permissões de câmera, localização, contatos ou arquivos no APK.\n\nOs dados do perfil e as conversas ficam no serviço online. Mensagens não têm criptografia de ponta a ponta. Consulte os termos dentro do piloto antes de cadastrar dados reais.\n\nEste é um piloto independente e exclusivo para maiores de 18 anos. Denúncias precisam de uma equipe de moderação configurada.")
             .setPositiveButton("Entendi",null).show();
     }
     private TextView text(String value,int size,int color,boolean bold,int top) {
