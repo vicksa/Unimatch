@@ -1,7 +1,18 @@
 import Link from 'next/link';
-import {ArrowRight,Heart,MessageCircle,Sparkles,ShieldCheck} from 'lucide-react';
+import {ArrowRight} from 'lucide-react';
 import Brand from '@/components/brand';
 
 export default function Welcome({onExplore}:{onExplore:()=>void}){
- return <main className="welcome-page"><header className="welcome-header"><Link href="/" aria-label="UniMatch, início"><Brand/></Link><Link className="welcome-login" href="/sign-in">Entrar <ArrowRight size={16}/></Link></header><section className="welcome-hero"><div className="welcome-copy"><span className="welcome-kicker"><span/>Para a comunidade Unilins</span><h1>O próximo oi<br/>pode ter <em>muito<br/>{' '}em comum.</em></h1><p>Amizade, um encontro ou uma boa conversa. Conheça pessoas do campus a partir dos gostos que vocês compartilham.</p><div className="welcome-actions"><Link className="primary" href="/sign-up">Criar minha conta <ArrowRight size={18}/></Link><button className="welcome-demo" onClick={onExplore}>Conhecer o app</button></div><p className="welcome-assurance"><ShieldCheck size={15}/>Só para maiores de 18 anos. Seu e-mail é privado.</p></div><div className="connection-art" aria-label="Interesses em comum aproximam pessoas"><div className="art-orbit orbit-one"/><div className="art-orbit orbit-two"/><div className="art-center"><Heart size={50} strokeWidth={1.5}/><span>Um gosto em comum.<br/>Uma nova conexão.</span></div><span className="art-chip chip-games">✦ Jogos</span><span className="art-chip chip-music">♫ Música</span><span className="art-chip chip-anime">♡ Animes</span><span className="art-chip chip-coffee">☕ Café</span><span className="art-spark spark-one">✦</span><span className="art-spark spark-two">✦</span></div></section><section className="welcome-features" aria-label="Como funciona"><article><span className="feature-icon"><Sparkles size={21}/></span><h2>Começa pelos seus gostos</h2><p>Seus interesses ajudam a encontrar quem combina com você.</p></article><article><span className="feature-icon"><Heart size={21}/></span><h2>O interesse é dos dois</h2><p>Curta um perfil. Se a pessoa curtir você também, deu match.</p></article><article><span className="feature-icon"><MessageCircle size={21}/></span><h2>Um oi, no seu tempo</h2><p>A conversa abre depois do match. Você escolhe como começar.</p></article></section><footer className="welcome-footer"><span>UniMatch · Independente, feito para a comunidade Unilins.</span><Link href="/sign-in">Já tenho uma conta <ArrowRight size={14}/></Link><span>18+</span></footer></main>;
+ return <main className="welcome-page">
+  <header className="welcome-header"><Link href="/" aria-label="UniMatch, início"><Brand/></Link><span>Unilins · 18+</span></header>
+  <section className="access-panel">
+   <p className="access-context">Para estudantes da Unilins</p>
+   <h1>Conheça gente<br/>da faculdade.</h1>
+   <p className="access-description">Veja os perfis, encontre interesses em comum e converse depois do match.</p>
+   <div className="access-actions"><Link className="primary" href="/sign-in">Entrar <ArrowRight size={18}/></Link><Link className="secondary" href="/sign-up">Criar conta</Link></div>
+   <button className="text-button access-demo" onClick={onExplore}>Ver demonstração</button>
+   <p className="access-note">Seu e-mail não aparece no perfil.<br/>Somente para maiores de 18 anos.</p>
+  </section>
+  <footer className="welcome-footer">Projeto independente. Sem vínculo oficial com a Unilins.</footer>
+ </main>;
 }
