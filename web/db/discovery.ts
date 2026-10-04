@@ -7,11 +7,16 @@ const keySql=`CASE ${normalized} ${Object.entries(interestAliases).map(([alias,k
 
 export const discoverySql=`
 WITH mine AS (SELECT ARRAY(SELECT value FROM jsonb_array_elements_text(?::jsonb) AS own(value)) AS keys)
-SELECT p.id,p.name,p.course,p.semester,p.age,p.bio,p.interests,p.intent,p.photo
-FROM profiles p CROSS JOIN mine
+SELECT p.id,p.name,p.course,p.semester,p.age,p.bio,p.interests,p.intent,p.photo,p.gender,p.prompts,ARRAY(SELECT slot FROM profile_photos WHERE profile_id=p.id ORDER BY slot) AS photos
+FROM profiles p CROSS JOIN mine JOIN profiles owner ON owner.id=?
 CROSS JOIN LATERAL (SELECT ARRAY(SELECT DISTINCT ${keySql} FROM jsonb_array_elements_text(p.interests::jsonb) AS tags(value)) AS keys) peer
 CROSS JOIN LATERAL (SELECT ARRAY(SELECT unnest(mine.keys) INTERSECT SELECT unnest(peer.keys)) AS keys) shared
 WHERE p.approved=1 AND p.paused=0 AND p.id<>?
+AND p.age BETWEEN owner.age_min AND owner.age_max AND owner.age BETWEEN p.age_min AND p.age_max
+AND (jsonb_array_length(owner.looking_for)=0 OR jsonb_exists(owner.looking_for,p.gender))
+AND (jsonb_array_length(p.looking_for)=0 OR jsonb_exists(p.looking_for,owner.gender))
+AND (jsonb_array_length(owner.desired_intents)=0 OR jsonb_exists(owner.desired_intents,p.intent))
+AND (jsonb_array_length(p.desired_intents)=0 OR jsonb_exists(p.desired_intents,owner.intent))
 AND NOT EXISTS(SELECT 1 FROM reactions WHERE sender=? AND target=p.id)
 AND NOT EXISTS(SELECT 1 FROM blocks WHERE (sender=? AND target=p.id) OR (target=? AND sender=p.id))
 ORDER BY cardinality(shared.keys) DESC,

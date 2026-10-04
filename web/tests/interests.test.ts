@@ -28,3 +28,14 @@ test('pet aliases and favorites match without mixing artists and movies',()=>{
   assert.deepEqual(canonicalInterests(['cães','Cachorros','gato']),['Cachorros','Gatos']);
   assert.deepEqual(readInterests(JSON.stringify(['Filme: Três Homens, um Destino'])),['Filme: Três Homens, um Destino']);
 });
+
+test('mutual preferences accept boundaries and reject one-sided age, gender or intentions',async()=>{
+ const {mutuallyCompatible,defaultPreferences}=await import('../lib/profile.ts');
+ const a={...defaultPreferences,age:22,intent:'Relacionamento',gender:'Mulher',lookingFor:['Homem'],ageMin:21,ageMax:25};
+ const b={...defaultPreferences,age:25,intent:'Relacionamento',gender:'Homem',lookingFor:['Mulher'],ageMin:22,ageMax:30};
+ assert.equal(mutuallyCompatible(a,b),true);
+ assert.equal(mutuallyCompatible(a,{...b,age:26}),false);
+ assert.equal(mutuallyCompatible(a,{...b,ageMin:23}),false);
+ assert.equal(mutuallyCompatible(a,{...b,lookingFor:['Homem']}),false);
+ assert.equal(mutuallyCompatible(a,{...b,desiredIntents:['Amizade']}),false);
+});
