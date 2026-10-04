@@ -19,7 +19,7 @@
   --ring: #353247;
   --radius: .375rem;
 }
-body { background: var(--background); font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+body { background: var(--background); font-family: var(--font-unimatch), system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
 h1, h2, h3 { color: var(--foreground); }
 button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
@@ -55,7 +55,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .filter-dot { background: var(--primary); }
 .discovery-layout { grid-template-columns: minmax(0, 520px) minmax(180px, 1fr); gap: 36px; }
 .discovery-main { overflow: visible; padding: 0; margin: 0; }
-.profile-card { background: #fff; border-radius: 8px; border: 1px solid var(--border); box-shadow: none; animation: none; }
+.profile-card { background: #fff; border-radius: 8px; border: 1px solid var(--border); box-shadow: none; }
 .portrait { height: 420px; background: var(--secondary); }
 .portrait img { object-position: center 38%; }
 .profile-details { padding: 22px 24px 24px; }
@@ -69,8 +69,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .bio { font-size: 14px; line-height: 1.7; margin: 17px 0; }
 .interests { gap: 6px; }
 .interests span { background: #f2f3ef; border-radius: 3px; padding: 5px 8px; font-size: 12px; line-height: 1.5; color: #51564f; }
-.recommendation-reason { background: transparent; color: var(--muted-foreground); padding: 0; margin-bottom: 15px; font-size: 12px; line-height: 1.6; border-radius: 0; }
-.recommendation-reason strong { color: var(--foreground); font-weight: 500; }
 .card-more { right: 8px; top: 8px; width: 44px; height: 44px; border-radius: 5px; background: #fffffff0; }
 .photo-index { background: #fffffff0; padding: 5px 8px; border-radius: 3px; font-size: 10px; letter-spacing: 0; bottom: 12px; right: 12px; }
 .portrait.without-photo { height: 110px; }
@@ -84,7 +82,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .reaction-bar .like { background: var(--primary); box-shadow: none; }
 .reaction-stamp { font-size: 18px; letter-spacing: 1px; border-radius: 4px; }
 .reaction-stamp.like { color: var(--primary); }
-.discovery-side { padding: 0; animation: none; }
+.discovery-side { padding: 0; }
 .discovery-side section { padding: 20px 0; border-top: 1px solid var(--border); }
 .discovery-side h2 { font-size: 14px; font-weight: 600; letter-spacing: 0; margin-bottom: 14px; }
 .discovery-side p { font-size: 12px; color: var(--muted-foreground); line-height: 1.7; margin-top: 12px; }
@@ -154,7 +152,7 @@ input:focus, textarea:focus { border-color: var(--primary); }
 .entry-panel p { font-size: 13px; color: var(--muted-foreground); }
 .entry-panel .interest-picker { max-width: none; margin: 0; border-top: 1px solid var(--border); padding-top: 22px; }
 .match-grid { gap: 18px; }
-.match-card { background: #fff; border-color: var(--border); border-radius: 6px; animation: none; box-shadow: none; }
+.match-card { background: #fff; border-color: var(--border); border-radius: 6px; box-shadow: none; }
 .match-placeholder { background: var(--secondary); color: #616956; }
 .match-card > div:not(.match-placeholder) { padding: 18px; }
 .match-card h2 { font-size: 18px; font-weight: 550; }
@@ -172,7 +170,6 @@ input:focus, textarea:focus { border-color: var(--primary); }
 .match-heart { display: none; }
 .match-modal { background: #fff; }
 [data-slot="dialog-content"], [data-slot="alert-dialog-content"] { background: #fff; border-color: var(--border); border-radius: 8px; }
-.screen-transition, .section-heading .eyebrow, .selected-interests button, .interest-options button[aria-pressed=true], .sidebar nav button.selected svg, .bottom-nav button.selected svg, .interest-category[open] .interest-options { animation: none; }
 .primary, .secondary, .reaction-bar button, .icon-btn, .filter-btn, .match-card, .interest-options button, .sidebar nav button, .bottom-nav button { transition: background-color .15s ease, border-color .15s ease, color .15s ease; }
 @media (hover:hover) {
   .primary:hover:not(:disabled), .reaction-bar .like:hover:not(:disabled) { background: #494557; transform: none; box-shadow: none; }
@@ -191,8 +188,6 @@ input:focus, textarea:focus { border-color: var(--primary); }
 .access-description { font-size: 14px; line-height: 1.75; color: var(--muted-foreground); margin-top: 18px; max-width: 330px; }
 .access-actions { display: grid; gap: 10px; margin-top: 28px; }
 .access-actions .primary, .access-actions .secondary { min-height: 48px; justify-content: center; border-radius: 5px; font-size: 14px; }
-.access-actions .primary svg { margin-left: auto; }
-.access-actions .primary { padding-left: 35px; }
 .access-demo { width: 100%; justify-content: center; margin-top: 12px; font-size: 12px; color: var(--muted-foreground); }
 .access-note { margin-top: 24px; font-size: 11px; color: var(--muted-foreground); line-height: 1.8; text-align: center; }
 .welcome-footer { font-size: 11px; color: var(--muted-foreground); text-align: center; padding: 24px 0; }
@@ -228,7 +223,6 @@ input:focus, textarea:focus { border-color: var(--primary); }
   .profile-details { padding: 20px; }
   .name-row h2 { font-size: 25px; }
   .intent-label { font-size: 10px; }
-  .recommendation-reason { font-size: 12px; }
   .reaction-bar { gap: 10px; margin-top: 12px; }
   .reaction-bar button { min-height: 48px; border-radius: 5px; }
   .bottom-nav { display: flex; background: #fff; border-top: 1px solid var(--border); padding: 5px 8px calc(5px + env(safe-area-inset-bottom)); box-shadow: none; }
@@ -276,3 +270,13 @@ input:focus, textarea:focus { border-color: var(--primary); }
 .auth-page .auth-title { font-size: 20px; font-weight: 600; }
 .auth-page .auth-subtitle { color: var(--muted-foreground); font-size: 13px; }
 .auth-page .auth-submit { min-height: 46px; border-radius: 5px; box-shadow: none; font-size: 14px; }
+
+/* Shared interests carry the recommendation's meaning, not a fabricated score. */
+.profile-common { margin: 18px 0; padding: 14px 16px; background: #eeefeb; border-radius: 6px; }
+.profile-common h3 { font-size: 13px; font-weight: 600; letter-spacing: 0; margin-bottom: 10px; }
+.shared-interests { display: flex; flex-wrap: wrap; gap: 7px 14px; }
+.shared-interests span { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 500; color: var(--foreground); }
+.shared-interests svg { width: 13px; height: 13px; flex-shrink: 0; color: var(--primary); }
+@media (max-width:800px) {
+  .reaction-bar { position: sticky; bottom: calc(62px + env(safe-area-inset-bottom)); z-index: 20; padding: 10px 0; background: var(--background); }
+}
