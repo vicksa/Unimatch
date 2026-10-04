@@ -1,6 +1,7 @@
 import {z} from 'zod';
+import {MAX_INTERESTS,MAX_INTEREST_LENGTH} from './interests.ts';
 export const courses=['Administração','Arquitetura e Urbanismo','Biomedicina','Educação Física','Enfermagem','Engenharia Civil','Engenharia de Computação','Engenharia de Software','Engenharia Elétrica','Engenharia Mecânica','Farmácia','Fisioterapia','Fonoaudiologia','Odontologia','Psicologia','Serviço Social','Outro curso'];
-export const profileSchema=z.object({name:z.string().trim().min(2).max(40),course:z.enum(courses as [string,...string[]]),semester:z.number().int().min(1).max(12),age:z.number().int().min(18).max(100),bio:z.string().trim().max(400),interests:z.array(z.string().trim().min(1).max(25)).max(8),intent:z.enum(['Conhecer pessoas','Relacionamento','Amizade']),consent:z.literal(true)}).strict();
+export const profileSchema=z.object({name:z.string().trim().min(2).max(40),course:z.enum(courses as [string,...string[]]),semester:z.number().int().min(1).max(12),age:z.number().int().min(18).max(100),bio:z.string().trim().max(400),interests:z.array(z.string().trim().min(1).max(MAX_INTEREST_LENGTH)).max(MAX_INTERESTS),intent:z.enum(['Conhecer pessoas','Relacionamento','Amizade']),consent:z.literal(true)}).strict();
 export function matchKey(a:string,b:string){return [a,b].sort().join(':');}
 export function participant(m:{a:string;b:string}|null,id:string){return !!m&&(m.a===id||m.b===id);}
 export function validOrigin(req:Request){return req.headers.get('origin')===new URL(req.url).origin;}

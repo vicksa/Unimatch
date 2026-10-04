@@ -1,4 +1,13 @@
-export const suggestedInterests=['Jogos','Animes','Música','Cinema','Séries','Livros','Esportes','Tecnologia','Arte','Viagens','Culinária','Fotografia','Café','Pets','Academia','Dança'] as const;
+export const MAX_INTERESTS=24;
+export const MAX_INTEREST_LENGTH=80;
+export const interestCategories=[
+  {name:'Hobbies',options:['Livros','Culinária','Fotografia','Viagens','Arte','Desenho','Pintura','Artesanato','Jardinagem','Café','Dança','Caminhadas','Trilhas','Acampamento','Academia','Esportes','Futebol','Vôlei','Basquete','Natação','Ciclismo','Corrida','Skate','Yoga','Tecnologia']},
+  {name:'Jogos e animes',options:['Jogos','Animes','Jogos de tabuleiro','RPG de mesa','Jogos cooperativos','Jogos de estratégia','Jogos de aventura','Valorant','League of Legends','Minecraft','The Sims','Pokémon','Naruto','One Piece','Dragon Ball','Studio Ghibli']},
+  {name:'Estilos de música',options:['Música','Pop','Rock','MPB','Sertanejo','Pagode','Samba','Funk','Rap','Hip-hop','Eletrônica','Indie','Metal','Jazz','Blues','Reggae','Forró','Axé','K-pop','Gospel','Música clássica','Bossa nova']},
+  {name:'Pets de que gosto',options:['Pets','Cachorros','Gatos','Coelhos','Hamsters','Aves','Peixes','Tartarugas','Cavalos']},
+  {name:'Filmes e séries',options:['Cinema','Séries','Filmes de comédia','Filmes de romance','Filmes de ação','Filmes de aventura','Filmes de drama','Filmes de terror','Filmes de suspense','Ficção científica','Fantasia','Animação','Documentários']},
+] as const;
+export const suggestedInterests=interestCategories.flatMap(category=>[...category.options]);
 
 export const interestAliases:Record<string,string>={
   games:'jogos',game:'jogos',jogo:'jogos',gaming:'jogos',videogame:'jogos',videogames:'jogos',
@@ -6,6 +15,9 @@ export const interestAliases:Record<string,string>={
   filmes:'cinema',filme:'cinema',movies:'cinema',
   serie:'series',livro:'livros',books:'livros',
   esporte:'esportes',sports:'esportes',technology:'tecnologia',
+  cachorro:'cachorros',cao:'cachorros',caes:'cachorros',dog:'cachorros',dogs:'cachorros',
+  gato:'gatos',cat:'gatos',cats:'gatos',coelho:'coelhos',hamster:'hamsters',
+  ave:'aves',passaro:'aves',passaros:'aves',peixe:'peixes',tartaruga:'tartarugas',cavalo:'cavalos',
 };
 
 function normalized(value:string){return value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/\s+/g,' ');}
