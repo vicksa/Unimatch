@@ -8,6 +8,13 @@
       "when": 1791085266833,
       "tag": "0000_stale_random",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1791125472530,
+      "tag": "0001_remove_academic_approval",
+      "breakpoints": true
     }
   ]
 }
