@@ -50,7 +50,7 @@ public final class MainActivity extends Activity {
         root.addView(button("Abrir UniMatch",true,()->openPilot()));
         root.addView(text("Este APK conecta você ao piloto online. A interface e o login são exibidos pelo navegador seguro do Android, com sua sessão existente.",14,MUTED,false,16));
         root.addView(button("Privacidade e regras",false,()->showPrivacy()));
-        root.addView(text("Piloto independente · Somente 18+\nSem integração com o portal acadêmico. O acesso ainda é privado; perfis reais exigem aprovação de vínculo.",13,MUTED,false,36));
+        root.addView(text("Piloto independente · Somente 18+\nSem integração com o portal acadêmico. O acesso ainda é privado; crie seu perfil para participar.",13,MUTED,false,36));
         root.addView(text("Versão 0.1.0 · Android",12,MUTED,false,24));
         setContentView(scroll);
         scroll.requestApplyInsets();
@@ -92,7 +92,7 @@ public final class MainActivity extends Activity {
     }
     private void showPrivacy() {
         new AlertDialog.Builder(this).setTitle("Privacidade no UniMatch")
-            .setMessage("O APK não recebe nem armazena sua senha, cookies ou mensagens. O navegador gerencia o login. Não há permissões de câmera, localização, contatos ou arquivos no APK.\n\nOs dados do perfil e as conversas ficam no serviço online. Mensagens não têm criptografia de ponta a ponta. Consulte os termos dentro do piloto antes de cadastrar dados reais.\n\nEste é um piloto independente, privado e exclusivo para maiores de 18 anos. O vínculo acadêmico não é verificado pelo login. Denúncias precisam de uma equipe de moderação configurada.")
+            .setMessage("O APK não recebe nem armazena sua senha, cookies ou mensagens. O navegador gerencia o login. Não há permissões de câmera, localização, contatos ou arquivos no APK.\n\nOs dados do perfil e as conversas ficam no serviço online. Mensagens não têm criptografia de ponta a ponta. Consulte os termos dentro do piloto antes de cadastrar dados reais.\n\nEste é um piloto independente, privado e exclusivo para maiores de 18 anos. Denúncias precisam de uma equipe de moderação configurada.")
             .setPositiveButton("Entendi",null).show();
     }
     private TextView text(String value,int size,int color,boolean bold,int top) {
