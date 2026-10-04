@@ -13,9 +13,10 @@ export async function GET(req:Request){return handle(req)}
 export async function POST(req:Request){return handle(req)}
 async function handle(req:Request){
  try{
- const user=await getUser();if(!user)return json({error:'Entre na sua conta para continuar.'},401);
+ const path=new URL(req.url).pathname.replace('/api/','');
+ const user=await getUser(path==='me');if(!user)return json({error:'Entre na sua conta para continuar.'},401);
  const {DB:db,BUCKET:bucket,ADMIN_USER_ID:adminId}=runtime();if(!db)return json({error:'Serviço temporariamente indisponível.'},503);
- const id=user.userId;const admin=!!adminId&&id===adminId;const path=new URL(req.url).pathname.replace('/api/','');
+ const id=user.userId;const admin=!!adminId&&id===adminId;
  const write=req.method==='POST';
  if(write&&!validOrigin(req))return json({error:'Origem não autorizada.'},403);
  if(write){const size=Number(req.headers.get('content-length')||0);if(size>3000000)return json({error:'Arquivo muito grande.'},413);const now=Date.now();const key=id+':'+Math.floor(now/60000);const rate=await db.prepare('INSERT INTO limits (key,count,expires) VALUES (?,1,?) ON CONFLICT(key) DO UPDATE SET count=limits.count+1 RETURNING count').bind(key,now+120000).first<{count:number}>();if((rate?.count||0)>40)return json({error:'Muitas tentativas. Aguarde um minuto.'},429);await db.prepare('DELETE FROM limits WHERE expires < ?').bind(now).run();}

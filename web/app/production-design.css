@@ -146,6 +146,21 @@ input:focus, textarea:focus { border-color: var(--primary); }
 .setting-row strong { font-size: 13px; font-weight: 500; }
 .setting-row p { font-size: 12px; color: var(--muted-foreground); }
 .consent label { font-size: 12px; }
+.bottom-nav .connection-count {
+  position: absolute;
+  top: 2px;
+  right: 8px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 10px;
+  line-height: 1;
+}
 .consent [role="checkbox"] {
   width: 24px;
   height: 24px;
