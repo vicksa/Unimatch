@@ -1,5 +1,7 @@
 import {database} from '@/db/database';
 import {photos} from '@/lib/photos';
+import {canonicalInterests,interestKeys,commonInterests} from '@/lib/interests';
+import {discoverySql} from '@/db/discovery';
 import {getUser} from '@/app/auth';
 import {profileSchema,matchKey,participant,validOrigin,validatePng,readBounded} from '@/lib/domain';
 import {z} from 'zod';
@@ -19,7 +21,7 @@ async function handle(req:Request){
  const mine=await db.prepare('SELECT * FROM profiles WHERE id=?').bind(id).first<Record<string,unknown>>();
  if(path==='me'&&!write)return json({profile:mine,admin,user:{name:user.fullName||'',id},adminConfigured:!!adminId});
  let body:Record<string,unknown>={};if(write&&path!=='photo'){const raw=new TextDecoder().decode(await readBounded(req,10000));if(raw.length>10000)return json({error:'Dados muito grandes.'},413);body=JSON.parse(raw)}
- if(path==='profile'&&write){const p=profileSchema.parse(body);const now=new Date().toISOString();await db.prepare('INSERT INTO profiles(id,name,course,semester,age,bio,interests,intent,consent_at,created_at,approved) VALUES (?,?,?,?,?,?,?,?,?,?,1) ON CONFLICT(id) DO UPDATE SET name=excluded.name,course=excluded.course,semester=excluded.semester,age=excluded.age,bio=excluded.bio,interests=excluded.interests,intent=excluded.intent').bind(id,p.name,p.course,p.semester,p.age,p.bio,JSON.stringify(p.interests),p.intent,now,now).run();return json({ok:true});}
+ if(path==='profile'&&write){const p=profileSchema.parse(body);const now=new Date().toISOString();await db.prepare('INSERT INTO profiles(id,name,course,semester,age,bio,interests,intent,consent_at,created_at,approved) VALUES (?,?,?,?,?,?,?,?,?,?,1) ON CONFLICT(id) DO UPDATE SET name=excluded.name,course=excluded.course,semester=excluded.semester,age=excluded.age,bio=excluded.bio,interests=excluded.interests,intent=excluded.intent').bind(id,p.name,p.course,p.semester,p.age,p.bio,JSON.stringify(canonicalInterests(p.interests)),p.intent,now,now).run();return json({ok:true});}
  if(!mine)return json({error:'Crie seu perfil primeiro.'},403);
  if(path==='pause'&&write){await db.prepare('UPDATE profiles SET paused=? WHERE id=?').bind(body.paused===true?1:0,id).run();return json({ok:true})}
  if(path==='export'&&!write){const [reactions,messages,reports]=await Promise.all([db.prepare('SELECT * FROM reactions WHERE sender=?').bind(id).all(),db.prepare('SELECT * FROM messages WHERE sender=?').bind(id).all(),db.prepare('SELECT * FROM reports WHERE sender=?').bind(id).all()]);return json({profile:mine,reactions:reactions.results,messages:messages.results,reports:reports.results})}
@@ -29,7 +31,7 @@ async function handle(req:Request){
  if(path==='admin'&&!write){if(!admin)return json({error:'Acesso negado.'},403);const [suspended,reports]=await Promise.all([db.prepare('SELECT id,name,course,semester FROM profiles WHERE approved=0 LIMIT 100').all(),db.prepare('SELECT * FROM reports WHERE resolved=0 LIMIT 100').all()]);return json({suspended:suspended.results,reports:reports.results})}
  if(path==='admin'&&write){if(!admin)return json({error:'Acesso negado.'},403);const p=z.object({target:z.string().min(1).max(200),action:z.enum(['approve','suspend','resolve'])}).parse(body);await db.batch([p.action==='resolve'?db.prepare('UPDATE reports SET resolved=1 WHERE id=?').bind(p.target):db.prepare('UPDATE profiles SET approved=? WHERE id=?').bind(p.action==='approve'?1:0,p.target),db.prepare('INSERT INTO audit VALUES (?,?,?,?,?)').bind(crypto.randomUUID(),id,p.action,p.target,new Date().toISOString())]);return json({ok:true})}
  if(!mine.approved)return json({error:'Seu perfil está suspenso pela moderação.'},403);
- if(path==='discover'&&!write){const rows=await db.prepare('SELECT id,name,course,semester,age,bio,interests,intent,photo FROM profiles p WHERE approved=1 AND paused=0 AND id<>? AND NOT EXISTS(SELECT 1 FROM reactions WHERE sender=? AND target=p.id) AND NOT EXISTS(SELECT 1 FROM blocks WHERE (sender=? AND target=p.id) OR (target=? AND sender=p.id)) ORDER BY created_at DESC LIMIT 100').bind(id,id,id,id).all();return json({profiles:rows.results})}
+ if(path==='discover'&&!write){const rows=await db.prepare(discoverySql).bind(JSON.stringify(interestKeys(mine.interests)),id,id,id,id).all();return json({profiles:rows.results.map(p=>({...p,commonInterests:commonInterests(mine.interests,p.interests)}))})}
  if(path==='matches'&&!write){const rows=await db.prepare('SELECT m.id,p.id AS peer,p.name,p.course,p.semester,p.age,p.bio,p.interests,p.intent,p.photo FROM matches m JOIN profiles p ON p.id=CASE WHEN m.a=? THEN m.b ELSE m.a END WHERE (m.a=? OR m.b=?) AND p.approved=1 AND NOT EXISTS(SELECT 1 FROM blocks WHERE (sender=? AND target=p.id) OR (target=? AND sender=p.id))').bind(id,id,id,id,id).all();return json({matches:rows.results})}
  const target=typeof body.target==='string'?body.target:'';
  if(['react','block','report'].includes(path)&&write){if(!target||target===id)return json({error:'Perfil inválido.'},400);const peer=await db.prepare('SELECT id FROM profiles WHERE id=? AND approved=1').bind(target).first();if(!peer)return json({error:'Perfil indisponível.'},404);

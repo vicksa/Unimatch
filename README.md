@@ -34,7 +34,7 @@ O workflow GitHub Actions está configurado para compilar e disponibiliza `UniMa
 
 ## Limites de segurança e verificação
 
-A aplicação web tem 34 casos automatizados (19 cenários de API no Neon real e 15 verificações de domínio/migração) de domínio/API aprovados, incluindo autorização de chat/fotos, CSRF, match recíproco, revogação após desfazer match, cadastro imediato e preservação de suspensões, bloqueio e exclusão. O cliente Android tem compilação com as ferramentas oficiais do SDK e validação de assinatura/manifesto do APK. Não foi homologado em aparelho físico ou emulador nesta sessão. A instalação ainda precisa ser validada no seu celular. Mensagens online não têm criptografia de ponta a ponta.
+A aplicação web tem 40 casos automatizados (21 cenários de API no Neon real e 19 verificações de domínio/interesses/migração) de domínio/API aprovados, incluindo autorização de chat/fotos, CSRF, match recíproco, revogação após desfazer match, cadastro imediato e preservação de suspensões, bloqueio e exclusão. O cliente Android tem compilação com as ferramentas oficiais do SDK e validação de assinatura/manifesto do APK. Não foi homologado em aparelho físico ou emulador nesta sessão. A instalação ainda precisa ser validada no seu celular. Mensagens online não têm criptografia de ponta a ponta.
 
 Sem serviços pagos contratados. Gratuidade de hospedagem e Actions depende de cotas e políticas dos provedores. Não há promessa de operação ilimitada.
 
@@ -57,3 +57,9 @@ vercel deploy --prod
 O teste de integração cria e remove um schema PostgreSQL isolado. A migração inicial é idempotente e preserva registros existentes. O piloto antigo permanece intacto; contas ChatGPT e contas Clerk são identidades distintas, e dados antigos não são associados automaticamente por e-mail.
 
 Google: no painel Clerk, abra `unimatch-auth`, selecione Production e habilite Google em SSO connections. Use credenciais OAuth próprias se o painel exigir. Não troque para a instância Development para contornar essa configuração.
+
+## Recomendações por interesses
+
+A descoberta prioriza o número de interesses compartilhados. Empates usam a proporção de interesses em comum (Jaccard), depois a data de cadastro e o ID. A ordenação acontece no PostgreSQL antes do limite de 100 perfis, incluindo candidatos antigos. Perfis suspensos, pausados, bloqueados ou já avaliados continuam excluídos.
+
+Jogos/Games, Anime/Animes, Música sem acento e outras grafias equivalentes contam uma vez. Outros gostos são comparados sem diferença de maiúsculas, acentos e espaços. A interface sugere interesses e mostra os gostos compartilhados; não apresenta essa medida como probabilidade de relacionamento. Sem interesses, a descoberta mantém uma ordem determinística por cadastro. A demonstração permite mudar interesses fictícios em Meu perfil e ver as recomendações, sem login ou salvar dados.

@@ -55,5 +55,36 @@ assert.equal((await call('alice','discover')).status,200);
 await t.test('block revokes chat, photos and discovery',async()=>{assert.equal((await call('alice','block',{target:'bob'})).status,200);assert.equal((await call('bob','messages?match='+encodeURIComponent(match))).status,404);assert.equal((await call('bob','matches')).body.matches.length,0);setUser('bob');assert.equal((await route.GET(new Request('https://test.invalid/api/photo/alice'))).status,404)});
 await t.test('export contains only own sent messages and reactions',async()=>{const r=await call('alice','export');assert.equal(r.body.profile.id,'alice');assert.ok(r.body.reactions.every(x=>x.sender==='alice'))});
 await t.test('account deletion cascades data and removes private photo',async()=>{assert.equal((await call('alice','delete',{confirm:'no'})).status,400);assert.equal((await call('alice','delete',{confirm:'EXCLUIR'})).status,200);assert.equal((await call('alice','me')).body.profile,null);assert.equal(files.size,0);assert.equal((await DB.prepare('SELECT * FROM reactions WHERE sender=? OR target=?').bind('alice','alice').all()).results.length,0)});
+await t.test('recommendation ranks the entire eligible pool, normalizes legacy tags and explains shared interests',async()=>{
+const owner='rec-owner';await call(owner,'profile',{...p('Recomendação'),interests:['Games','Anime','MÚSICA']});
+assert.equal((await call(owner,'me')).body.profile.interests,JSON.stringify(['Jogos','Animes','Música']));
+const fixtures=[
+ ['rec-exact',['GAMES','anime','MUSICA','games'],1,0,'2000-01-01'],
+ ['rec-broad',['Jogos','Animes','Música','Livros','Arte','Cinema'],1,0,'2026-01-01'],
+ ['rec-one',['Música'],1,0,'2026-02-01'],
+ ['rec-cinema',['Cinema'],1,0,'2000-01-01'],
+ ['rec-paused',['Jogos','Animes','Música'],1,1,'2026-05-01'],
+ ['rec-suspended',['Jogos','Animes','Música'],0,0,'2026-05-01'],
+ ['rec-blocked',['Jogos','Animes','Música'],1,0,'2026-05-01'],
+ ['rec-blocking',['Jogos','Animes','Música'],1,0,'2026-05-01'],
+ ['rec-reacted',['Jogos','Animes','Música'],1,0,'2026-05-01'],
+ ...Array.from({length:105},(_,i)=>['noise-'+String(i).padStart(3,'0'),['Café'],1,0,'2026-03-01'])];
+const args=[];const placeholders=fixtures.map(([id,tags,active,paused,date])=>{args.push(id,'Teste','Engenharia de Software',1,22,'',JSON.stringify(tags),'Conhecer pessoas',date,date,active,paused);return '(?,?,?,?,?,?,?,?,?,?,?,?)'}).join(',');
+await DB.prepare('INSERT INTO profiles(id,name,course,semester,age,bio,interests,intent,consent_at,created_at,approved,paused) VALUES '+placeholders).bind(...args).run();
+await DB.batch([DB.prepare('INSERT INTO blocks VALUES (?,?)').bind(owner,'rec-blocked'),DB.prepare('INSERT INTO blocks VALUES (?,?)').bind('rec-blocking',owner),DB.prepare('INSERT INTO reactions VALUES (?,?,?)').bind(owner,'rec-reacted','pass')]);
+const r=await call(owner,'discover');assert.equal(r.status,200);assert.equal(r.body.profiles.length,100);
+assert.equal(r.body.profiles[0].id,'rec-exact');assert.equal(r.body.profiles[1].id,'rec-broad');
+assert.deepEqual(r.body.profiles[0].commonInterests,['Jogos','Animes','Música']);
+assert.ok(r.body.profiles.every(x=>!['rec-paused','rec-suspended','rec-blocked','rec-blocking','rec-reacted',owner].includes(x.id)));
+});
+await t.test('changing interests changes recommendations immediately, and empty interests fall back deterministically',async()=>{
+await call('rec-owner','profile',{...p('Recomendação'),interests:['Filmes']});
+assert.equal((await call('rec-owner','discover')).body.profiles[0].id,'rec-cinema');
+await call('rec-owner','profile',{...p('Recomendação'),interests:[]});
+const a=await call('rec-owner','discover'),b=await call('rec-owner','discover');
+assert.equal(a.status,200);assert.deepEqual(a.body.profiles,b.body.profiles);
+assert.ok(a.body.profiles.every(x=>x.commonInterests.length===0));
+await DB.prepare("DELETE FROM profiles WHERE id LIKE 'rec-%' OR id LIKE 'noise-%'").run();
+});
 await t.test('durable rate limit applies',async()=>{let limited=false;for(let i=0;i<42;i++){const r=await call('mallory','pause',{paused:false});if(r.status===429)limited=true}assert.equal(limited,true)});
 });
