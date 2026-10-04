@@ -32,6 +32,6 @@ O workflow GitHub Actions está configurado para compilar e disponibiliza `UniMa
 
 ## Limites de segurança e verificação
 
-A aplicação web tem 30 casos automatizados de domínio/API aprovados, incluindo autorização de chat/fotos, CSRF, match recíproco, bloqueio e exclusão. O cliente Android tem compilação com as ferramentas oficiais do SDK e validação de assinatura/manifesto do APK. Não foi homologado em aparelho físico ou emulador nesta sessão. Login de produção e instalação precisam ser validados no seu celular. Mensagens online não têm criptografia de ponta a ponta.
+A aplicação web tem 33 casos automatizados de domínio/API aprovados, incluindo autorização de chat/fotos, CSRF, match recíproco, revogação após desfazer match, renovação de aprovação acadêmica, bloqueio e exclusão. O cliente Android tem compilação com as ferramentas oficiais do SDK e validação de assinatura/manifesto do APK. Não foi homologado em aparelho físico ou emulador nesta sessão. Login de produção e instalação precisam ser validados no seu celular. Mensagens online não têm criptografia de ponta a ponta.
 
 Sem serviços pagos contratados. Gratuidade de hospedagem e Actions depende de cotas e políticas dos provedores. Não há promessa de operação ilimitada.

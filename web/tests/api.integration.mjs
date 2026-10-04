@@ -18,6 +18,35 @@ await t.test('message persisted and HTML remains plain data',async()=>{assert.eq
 await t.test('pause hides discovery and blocks new likes',async()=>{await call('mallory','pause',{paused:true});assert.equal((await call('alice','react',{target:'mallory',kind:'like'})).status,404);assert.equal((await call('bob','discover')).body.profiles.length,0);await call('mallory','pause',{paused:false})});
 await t.test('report visible to moderator only',async()=>{assert.equal((await call('alice','report',{target:'bob',reason:'Teste de denúncia'})).status,200);assert.equal((await call('moderator','admin')).body.reports.length,1);assert.equal((await call('bob','admin')).status,403)});
 await t.test('upload rejects disguised file and requires owner',async()=>{setUser('alice');let r=await route.POST(new Request('https://test.invalid/api/photo',{method:'POST',headers:{Origin:'https://test.invalid','Content-Type':'image/png'},body:'<script>bad</script>'}));assert.equal(r.status,400);const b=await readFile('public/icon-192.png');r=await route.POST(new Request('https://test.invalid/api/photo',{method:'POST',headers:{Origin:'https://test.invalid','Content-Type':'image/png'},body:b}));assert.equal(r.status,200);assert.equal(files.size,1);setUser('bob');const photo=await route.GET(new Request('https://test.invalid/api/photo/alice'));assert.equal(photo.status,200);assert.equal(photo.headers.get('Cache-Control'),'private, no-store')});
+await t.test('unmatch revokes chat and requires new consent from both participants',async()=>{
+assert.equal((await call('alice','unmatch',{match})).status,200);
+assert.equal((await call('alice','matches')).body.matches.length,0);
+assert.equal((await call('bob','messages?match='+encodeURIComponent(match))).status,404);
+assert.equal((await call('bob','react',{target:'alice',kind:'like'})).body.match,false);
+assert.equal((await call('bob','messages',{match,body:'Old consent'})).status,404);
+assert.equal((await call('alice','react',{target:'bob',kind:'like'})).body.match,true);
+assert.equal((await call('alice','matches')).body.matches.length,1);
+assert.equal((await call('alice','messages?match='+encodeURIComponent(match))).body.messages.length,0);
+});
+await t.test('saving unchanged or nonacademic fields preserves approval',async()=>{
+await call('alice','profile',p('Alice'));
+assert.equal((await call('alice','me')).body.profile.approved,1);
+await call('alice','profile',{...p('Alice'),bio:'Nova descrição'});
+assert.equal((await call('alice','me')).body.profile.approved,1);
+});
+await t.test('course and semester changes require renewed academic approval',async()=>{
+for(const change of [{course:'Psicologia'},{semester:7}]){
+assert.equal((await call('alice','profile',{...p('Alice'),...change})).status,200);
+assert.equal((await call('alice','me')).body.profile.approved,0);
+assert.equal((await call('alice','discover')).status,403);
+assert.equal((await call('bob','matches')).body.matches.length,0);
+assert.equal((await call('bob','messages?match='+encodeURIComponent(match))).status,404);
+assert.equal((await call('bob','discover')).body.profiles.some(x=>x.id==='alice'),false);
+await call('alice','profile',p('Alice'));
+assert.equal((await call('alice','me')).body.profile.approved,0);
+assert.equal((await call('moderator','admin',{target:'alice',action:'approve'})).status,200);
+}
+});
 await t.test('block revokes chat, photos and discovery',async()=>{assert.equal((await call('alice','block',{target:'bob'})).status,200);assert.equal((await call('bob','messages?match='+encodeURIComponent(match))).status,404);assert.equal((await call('bob','matches')).body.matches.length,0);setUser('bob');assert.equal((await route.GET(new Request('https://test.invalid/api/photo/alice'))).status,404)});
 await t.test('export contains only own sent messages and reactions',async()=>{const r=await call('alice','export');assert.equal(r.body.profile.id,'alice');assert.ok(r.body.reactions.every(x=>x.sender==='alice'))});
 await t.test('account deletion cascades data and removes R2 photo',async()=>{assert.equal((await call('alice','delete',{confirm:'no'})).status,400);assert.equal((await call('alice','delete',{confirm:'EXCLUIR'})).status,200);assert.equal((await call('alice','me')).body.profile,null);assert.equal(files.size,0);assert.equal((await DB.prepare('SELECT * FROM reactions WHERE sender=? OR target=?').bind('alice','alice').all()).results.length,0)});

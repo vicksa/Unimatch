@@ -7,7 +7,7 @@ dist/
 .wrangler/
 .sites-runtime/
 .gradle/
-build/
+/android/**/build/
 local.properties
 *.jks
 *.keystore

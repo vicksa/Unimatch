@@ -9,7 +9,7 @@ Aplicação web responsiva com manifesto PWA para instalação pelo navegador. P
 - Perfil persistente em D1 com curso, semestre, idade declarada (18+), interesses, intenção, foto privada R2.
 - Cadastro começa pendente; perfil só entra em descoberta após aprovação manual.
 - Curtidas recíprocas geram match; mensagens exigem participação no match. Atualização da conversa a cada 8 segundos, sem promessa de push.
-- Pausar, denunciar, bloquear, desfazer match, exportar dados, excluir conta.
+- Pausar, denunciar, bloquear, desfazer match, exportar dados, excluir conta. Desfazer match invalida as duas curtidas anteriores e exige novo interesse dos dois lados. Alterar curso ou semestre exige nova aprovação acadêmica.
 - Moderação restrita ao identificador de usuário configurado como segredo ADMIN_USER_ID; aprovação/suspensão/encerramento de denúncia registrada em auditoria. Sem administrador configurado, nenhuma conta recebe aprovação automática.
 
 ## Segurança implementada
@@ -31,15 +31,15 @@ A CSP permite inline scripts necessários ao framework e não equivale a uma CSP
 ## Verificação executada
 
 - `node --experimental-strip-types --test tests/domain.test.ts`: 14 casos para validação, maioridade declarada, privilégio/identidade injetados, limites, CSRF, participação e PNG.
-- `node --test tests/api.integration.mjs`: 16 cenários completos + suíte, executando o código real da API e SQL real em SQLite com identidade e R2 simulados. Inclui cadastro, aprovação, match recíproco, IDOR leitura/escrita, mensagem, bloqueio, foto, exportação, exclusão e rate limit.
+- `node --test tests/api.integration.mjs`: 19 cenários completos + suíte, executando o código real da API e SQL real em SQLite com identidade e R2 simulados. Inclui cadastro, aprovação, renovação de aprovação após mudanças acadêmicas, match recíproco, revogação de consentimento após desfazer match, IDOR leitura/escrita, mensagem, bloqueio, foto, exportação, exclusão e rate limit.
 - `node node_modules/typescript/bin/tsc --noEmit`.
 - Build de produção Cloudflare Worker pelo workflow Sites.
 
-Testes usam armazenamento em memória isolado, sem alterar dados de produção. Não substituem testes do dispatcher de autenticação, email institucional, Safari/WebKit/Chromium, aparelhos físicos, desempenho, abuso distribuído, pentest ou conformidade LGPD. Nenhum navegador de QA permitido disponível nesta sessão; inspeção visual e WebMCP em navegador não validados.
+Testes usam armazenamento em memória isolado, sem alterar dados de produção. Não substituem testes do dispatcher de autenticação, email institucional, Safari/WebKit/Chromium, aparelhos físicos, desempenho, abuso distribuído, pentest ou conformidade LGPD. A demonstração foi verificada em Chromium com tamanhos de desktop e celular. Login de produção, instalação e aparelho físico ainda exigem homologação.
 
 ## Desenvolvimento
 
-Preserve package manager e lockfile. `pnpm dev` / `pnpm build` no ambiente apropriado. Setup e publish seguem o workflow Sites. Migrações Drizzle em `drizzle/`; D1 e R2 são declarados em `.openai/hosting.json`. Segredos reais somente na configuração de hospedagem. `.env.example` documenta ADMIN_USER_ID.
+Preserve package manager e lockfile. `pnpm dev` / `pnpm build` no ambiente apropriado. Os adaptadores em `build/` fazem parte do código-fonte e devem ser versionados; diretórios de saída do Android continuam ignorados. Setup e publish seguem o workflow Sites. Migrações Drizzle em `drizzle/`; D1 e R2 são declarados em `.openai/hosting.json`. Segredos reais somente na configuração de hospedagem. `.env.example` documenta ADMIN_USER_ID.
 
 ## Design
 
