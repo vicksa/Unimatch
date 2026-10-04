@@ -1,8 +1,11 @@
 import {createRequire} from 'node:module';const require=createRequire(import.meta.resolve('wrangler'));const {build}=require('esbuild');import path from 'node:path';import test from 'node:test';import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';
 const root=process.cwd();await build({entryPoints:['app/api/[...path]/route.ts'],outfile:'.sites-runtime/test-api.mjs',bundle:true,format:'esm',platform:'node',packages:'external',plugins:[{name:'test-injections',setup(b){b.onResolve({filter:/^(@\/app\/auth|@\/lib\/photos|@\/db\/database)$/},()=>({path:path.join(root,'tests/runtime.mjs'),external:true}));b.onResolve({filter:/^@\//},a=>({path:path.join(root,a.path.replace('@/',''))+'.ts'}))}}]});
+await build({entryPoints:['lib/chat-crypto.ts'],outfile:'.sites-runtime/api-chat-crypto.mjs',bundle:true,format:'esm',platform:'node'});
+const {createChatKey,encryptChatMessage,decryptChatMessage}=await import('../.sites-runtime/api-chat-crypto.mjs');
 const route=await import('../.sites-runtime/test-api.mjs');const {setUser,DB,files,env}=await import('./runtime.mjs');
 async function call(user,path,data,origin='https://test.invalid'){setUser(user);const req=new Request('https://test.invalid/api/'+path,{method:data===undefined?'GET':'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:data===undefined?undefined:JSON.stringify(data)});const r=await(data===undefined?route.GET(req):route.POST(req));return {status:r.status,body:await r.json()}}
 assert.equal((await DB.prepare('SELECT current_schema() AS schema').first()).schema,process.env.TEST_DATABASE_SCHEMA,'Refuse to run API tests outside the isolated schema');
+async function setupKey(user){const result=await createChatKey(user);const {local,backup}=result;assert.equal((await call(user,'chat-key',{keyId:local.keyId,encryptionPublicKey:local.encryptionPublicKey,signingPublicKey:local.signingPublicKey,backup})).status,200);return result}
 const p=name=>({name,course:'Engenharia de Software',semester:6,age:22,bio:'Olá',interests:['Games'],intent:'Conhecer pessoas',consent:true});
 test('full API flows and security boundaries',async t=>{
 await t.test('anonymous denied',async()=>assert.equal((await call(null,'me')).status,401));
@@ -15,7 +18,20 @@ await t.test('private fields excluded from discovery',async()=>{const r=await ca
 let match;
 await t.test('one-sided like cannot open chat; mutual match created once',async()=>{assert.equal((await call('alice','react',{target:'bob',kind:'like'})).body.match,false);assert.equal((await call('bob','matches')).body.matches.length,0);assert.equal((await call('bob','react',{target:'alice',kind:'like'})).body.match,true);await call('bob','react',{target:'alice',kind:'like'});const r=await call('alice','matches');assert.equal(r.body.matches.length,1);match=r.body.matches[0].id});
 await t.test('nonparticipant cannot read or send messages',async()=>{assert.equal((await call('mallory','messages?match='+encodeURIComponent(match))).status,404);assert.equal((await call('mallory','messages',{match,body:'Spy'})).status,404)});
-await t.test('message persisted and HTML remains plain data',async()=>{assert.equal((await call('alice','messages',{match,body:'<script>alert(1)</script>'})).status,200);assert.equal((await call('bob','messages?match='+encodeURIComponent(match))).body.messages[0].body,'<script>alert(1)</script>')});
+await t.test('encrypted message is stored without plaintext and only participants receive the envelope',async()=>{
+ const [alice,bob]=await Promise.all([setupKey('alice'),setupKey('bob')]);const keys=[alice.local,bob.local];const body='<script>alert(1)</script>';const context=(await call('alice','chat-keys?match='+encodeURIComponent(match))).body.context;const envelope=await encryptChatMessage(alice.local,keys,match,body,context);
+ assert.equal((await call('alice','messages',{match,body})).status,400);
+ assert.equal((await call('alice','messages',{match,envelope})).status,200);
+ const message=(await call('bob','messages?match='+encodeURIComponent(match))).body.messages[0];assert.equal(message.body,'');assert.equal(message.encryption_version,1);assert.equal(await decryptChatMessage(bob.local,alice.local,match,'alice',message.envelope,context),body);
+ assert.equal((await call('alice','messages',{match,envelope})).status,200);assert.equal((await call('bob','messages?match='+encodeURIComponent(match))).body.messages.length,1);
+ assert.equal((await call('mallory','chat-keys?match='+encodeURIComponent(match))).status,404);
+ const publicKeys=(await call('bob','chat-keys?match='+encodeURIComponent(match))).body.keys;assert.equal(publicKeys.length,2);assert.ok(publicKeys.every(key=>!('backup'in key)));
+ const own=(await call('bob','chat-key?user=alice')).body.chatKey;assert.equal(own.userId,'bob');assert.equal(own.keyId,bob.local.keyId);
+ const legacy=crypto.randomUUID();await DB.prepare('INSERT INTO messages(id,match_id,sender,body,created_at) VALUES (?,?,?,?,?)').bind(legacy,match,'alice','Histórico antigo','2026-01-01').run();
+ const upgraded=await encryptChatMessage(alice.local,keys,match,'Histórico antigo',context,legacy);
+ assert.equal((await call('alice','message-upgrade',{match,envelopes:[upgraded]})).status,200);
+ const stored=await DB.prepare('SELECT * FROM messages WHERE id=?').bind(legacy).first();assert.equal(stored.body,'');assert.equal(stored.legacy_migrated,1);assert.equal(await decryptChatMessage(bob.local,alice.local,match,'alice',stored.envelope,context),'Histórico antigo');
+});
 await t.test('pause hides discovery and blocks new likes',async()=>{await call('mallory','pause',{paused:true});assert.equal((await call('alice','react',{target:'mallory',kind:'like'})).status,404);assert.equal((await call('bob','discover')).body.profiles.some(x=>x.id==='mallory'),false);await call('mallory','pause',{paused:false})});
 await t.test('report visible to moderator only',async()=>{assert.equal((await call('alice','report',{target:'bob',reason:'Teste de denúncia'})).status,200);assert.equal((await call('moderator','admin')).body.reports.length,1);assert.equal((await call('bob','admin')).status,403)});
 await t.test('upload rejects disguised file and requires owner',async()=>{setUser('alice');let r=await route.POST(new Request('https://test.invalid/api/photo',{method:'POST',headers:{Origin:'https://test.invalid','Content-Type':'image/png'},body:'<script>bad</script>'}));assert.equal(r.status,400);const b=await readFile('public/icon-192.png');r=await route.POST(new Request('https://test.invalid/api/photo',{method:'POST',headers:{Origin:'https://test.invalid','Content-Type':'image/png'},body:b}));assert.equal(r.status,200);assert.equal(files.size,1);setUser('bob');const photo=await route.GET(new Request('https://test.invalid/api/photo/alice'));assert.equal(photo.status,200);assert.equal(photo.headers.get('Cache-Control'),'private, no-store')});
@@ -118,7 +134,7 @@ await t.test('mutual preferences filter discovery before ranking and reject dire
  const matched=(await call('pref-good','matches')).body.matches.find(m=>m.peer==='pref-owner');assert.deepEqual(matched.prompts,owner.prompts);
  assert.equal((await call('pref-owner','profile',{...owner,ageMin:26,ageMax:30})).status,200);
  assert.ok((await call('pref-owner','discover')).body.profiles.some(p=>p.id==='pref-age'));
- assert.equal((await call('pref-owner','messages',{match:matched.id,body:'Preferências novas preservam conversas existentes'})).status,200);
+ const [ownKey,peerKey]=await Promise.all([setupKey('pref-owner'),setupKey('pref-good')]);const envelope=await encryptChatMessage(ownKey.local,[ownKey.local,peerKey.local],matched.id,'Preferências novas preservam conversas existentes',(await call('pref-owner','chat-keys?match='+encodeURIComponent(matched.id))).body.context);assert.equal((await call('pref-owner','messages',{match:matched.id,envelope})).status,200);
 });
 await t.test('durable rate limit rejects writes and increments the persisted counter',async()=>{
  const now=Date.now();const minute=Math.floor(now/60000);
