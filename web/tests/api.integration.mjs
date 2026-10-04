@@ -1,7 +1,8 @@
 import {createRequire} from 'node:module';const require=createRequire(import.meta.resolve('wrangler'));const {build}=require('esbuild');import path from 'node:path';import test from 'node:test';import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';
-const root=process.cwd();await build({entryPoints:['app/api/[...path]/route.ts'],outfile:'.sites-runtime/test-api.mjs',bundle:true,format:'esm',platform:'node',packages:'external',plugins:[{name:'test-injections',setup(b){b.onResolve({filter:/^(@\/app\/auth|@\/lib\/photos)$/},()=>({path:path.join(root,'tests/runtime.mjs'),external:true}));b.onResolve({filter:/^@\//},a=>({path:path.join(root,a.path.replace('@/',''))+'.ts'}))}}]});
+const root=process.cwd();await build({entryPoints:['app/api/[...path]/route.ts'],outfile:'.sites-runtime/test-api.mjs',bundle:true,format:'esm',platform:'node',packages:'external',plugins:[{name:'test-injections',setup(b){b.onResolve({filter:/^(@\/app\/auth|@\/lib\/photos|@\/db\/database)$/},()=>({path:path.join(root,'tests/runtime.mjs'),external:true}));b.onResolve({filter:/^@\//},a=>({path:path.join(root,a.path.replace('@/',''))+'.ts'}))}}]});
 const route=await import('../.sites-runtime/test-api.mjs');const {setUser,DB,files,env}=await import('./runtime.mjs');
 async function call(user,path,data,origin='https://test.invalid'){setUser(user);const req=new Request('https://test.invalid/api/'+path,{method:data===undefined?'GET':'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:data===undefined?undefined:JSON.stringify(data)});const r=await(data===undefined?route.GET(req):route.POST(req));return {status:r.status,body:await r.json()}}
+assert.equal((await DB.prepare('SELECT current_schema() AS schema').first()).schema,process.env.TEST_DATABASE_SCHEMA,'Refuse to run API tests outside the isolated schema');
 const p=name=>({name,course:'Engenharia de Software',semester:6,age:22,bio:'Olá',interests:['Games'],intent:'Conhecer pessoas',consent:true});
 test('full API flows and security boundaries',async t=>{
 await t.test('anonymous denied',async()=>assert.equal((await call(null,'me')).status,401));
@@ -18,6 +19,20 @@ await t.test('message persisted and HTML remains plain data',async()=>{assert.eq
 await t.test('pause hides discovery and blocks new likes',async()=>{await call('mallory','pause',{paused:true});assert.equal((await call('alice','react',{target:'mallory',kind:'like'})).status,404);assert.equal((await call('bob','discover')).body.profiles.some(x=>x.id==='mallory'),false);await call('mallory','pause',{paused:false})});
 await t.test('report visible to moderator only',async()=>{assert.equal((await call('alice','report',{target:'bob',reason:'Teste de denúncia'})).status,200);assert.equal((await call('moderator','admin')).body.reports.length,1);assert.equal((await call('bob','admin')).status,403)});
 await t.test('upload rejects disguised file and requires owner',async()=>{setUser('alice');let r=await route.POST(new Request('https://test.invalid/api/photo',{method:'POST',headers:{Origin:'https://test.invalid','Content-Type':'image/png'},body:'<script>bad</script>'}));assert.equal(r.status,400);const b=await readFile('public/icon-192.png');r=await route.POST(new Request('https://test.invalid/api/photo',{method:'POST',headers:{Origin:'https://test.invalid','Content-Type':'image/png'},body:b}));assert.equal(r.status,200);assert.equal(files.size,1);setUser('bob');const photo=await route.GET(new Request('https://test.invalid/api/photo/alice'));assert.equal(photo.status,200);assert.equal(photo.headers.get('Cache-Control'),'private, no-store')});
+await t.test('four private photo positions, concurrent replacement, removal and slot validation',async()=>{
+ const png=await readFile('public/icon-192.png');
+ const upload=slot=>route.POST(new Request('https://test.invalid/api/photo',{method:'POST',headers:{Origin:'https://test.invalid','Content-Type':'image/png','X-Photo-Slot':String(slot)},body:png}));
+ setUser('alice');for(const slot of [1,2,3])assert.equal((await upload(slot)).status,200);
+ assert.equal(files.size,4);
+ assert.equal((await upload(4)).status,400);
+ const replacements=await Promise.all([upload(1),upload(1)]);assert.ok(replacements.every(r=>r.status===200));assert.equal(files.size,4);
+ assert.deepEqual((await call('alice','me')).body.profile.photos,[0,1,2,3]);
+ setUser('bob');assert.equal((await route.GET(new Request('https://test.invalid/api/photo/alice?slot=3'))).status,200);
+ assert.equal((await call('bob','photo/remove',{slot:3,target:'alice'})).status,200);
+ assert.deepEqual((await call('alice','me')).body.profile.photos,[0,1,2,3]);
+ assert.equal((await call('alice','photo/remove',{slot:2})).status,200);assert.equal(files.size,3);
+ setUser('alice');assert.equal((await route.GET(new Request('https://test.invalid/api/photo/alice?slot=2'))).status,404);
+});
 await t.test('unmatch revokes chat and requires new consent from both participants',async()=>{
 assert.equal((await call('alice','unmatch',{match})).status,200);
 assert.equal((await call('alice','matches')).body.matches.length,0);
@@ -52,7 +67,7 @@ assert.equal((await call('moderator','admin')).body.suspended.some(x=>x.id==='al
 await call('moderator','admin',{target:'alice',action:'approve'});
 assert.equal((await call('alice','discover')).status,200);
 });
-await t.test('block revokes chat, photos and discovery',async()=>{assert.equal((await call('alice','block',{target:'bob'})).status,200);assert.equal((await call('bob','messages?match='+encodeURIComponent(match))).status,404);assert.equal((await call('bob','matches')).body.matches.length,0);setUser('bob');assert.equal((await route.GET(new Request('https://test.invalid/api/photo/alice'))).status,404)});
+await t.test('block revokes chat, photos and discovery',async()=>{assert.equal((await call('alice','block',{target:'bob'})).status,200);assert.equal((await call('bob','messages?match='+encodeURIComponent(match))).status,404);assert.equal((await call('bob','matches')).body.matches.length,0);setUser('bob');assert.equal((await route.GET(new Request('https://test.invalid/api/photo/alice'))).status,404);assert.equal((await route.GET(new Request('https://test.invalid/api/photo/alice?slot=3'))).status,404)});
 await t.test('export contains only own sent messages and reactions',async()=>{const r=await call('alice','export');assert.equal(r.body.profile.id,'alice');assert.ok(r.body.reactions.every(x=>x.sender==='alice'))});
 await t.test('account deletion cascades data and removes private photo',async()=>{assert.equal((await call('alice','delete',{confirm:'no'})).status,400);assert.equal((await call('alice','delete',{confirm:'EXCLUIR'})).status,200);assert.equal((await call('alice','me')).body.profile,null);assert.equal(files.size,0);assert.equal((await DB.prepare('SELECT * FROM reactions WHERE sender=? OR target=?').bind('alice','alice').all()).results.length,0)});
 await t.test('recommendation ranks the entire eligible pool, normalizes legacy tags and explains shared interests',async()=>{
@@ -86,5 +101,32 @@ assert.equal(a.status,200);assert.deepEqual(a.body.profiles,b.body.profiles);
 assert.ok(a.body.profiles.every(x=>x.commonInterests.length===0));
 await DB.prepare("DELETE FROM profiles WHERE id LIKE 'rec-%' OR id LIKE 'noise-%'").run();
 });
-await t.test('durable rate limit applies',async()=>{let limited=false;for(let i=0;i<42;i++){const r=await call('mallory','pause',{paused:false});if(r.status===429)limited=true}assert.equal(limited,true)});
+await t.test('mutual preferences filter discovery before ranking and reject direct incompatible likes',async()=>{
+ const owner={...p('Preferências'),gender:'Mulher',age:22,intent:'Relacionamento',lookingFor:['Homem'],ageMin:21,ageMax:25,desiredIntents:['Relacionamento'],prompts:[{question:'Meu encontro ideal é…',answer:'Cinema e café'}]};
+ assert.equal((await call('pref-owner','profile',owner)).status,200);
+ const peer={...p('Compatível'),gender:'Homem',age:24,intent:'Relacionamento',lookingFor:['Mulher'],ageMin:22,ageMax:30};
+ const fixtures=[['pref-good',{}],['pref-reverse-age',{ageMin:23}],['pref-reverse-gender',{lookingFor:['Homem']}],['pref-reverse-intent',{desiredIntents:['Amizade']}],['pref-age',{age:26}],['pref-gender',{gender:'Mulher'}],['pref-intent',{intent:'Amizade'}]];
+ for(const [id,change]of fixtures)assert.equal((await call(id,'profile',{...peer,...change})).status,200);
+ const discover=(await call('pref-owner','discover')).body.profiles;
+ const debug=(await DB.prepare("SELECT id,age,gender,looking_for,age_min,age_max,intent,desired_intents,approved,paused FROM profiles WHERE id LIKE 'pref-%' ORDER BY id").all()).results;
+ assert.deepEqual(discover.map(p=>p.id),['pref-good'],JSON.stringify(debug));
+ assert.equal('looking_for'in discover[0],false);assert.equal('desired_intents'in discover[0],false);
+ assert.equal((await call('pref-reverse-age','discover')).body.profiles.some(p=>p.id==='pref-owner'),false);
+ assert.equal((await call('pref-owner','react',{target:'pref-reverse-age',kind:'like'})).status,404);
+ assert.equal((await call('pref-owner','react',{target:'pref-good',kind:'like'})).status,200);
+ assert.equal((await call('pref-good','react',{target:'pref-owner',kind:'like'})).body.match,true);
+ const matched=(await call('pref-good','matches')).body.matches.find(m=>m.peer==='pref-owner');assert.deepEqual(matched.prompts,owner.prompts);
+ assert.equal((await call('pref-owner','profile',{...owner,ageMin:26,ageMax:30})).status,200);
+ assert.ok((await call('pref-owner','discover')).body.profiles.some(p=>p.id==='pref-age'));
+ assert.equal((await call('pref-owner','messages',{match:matched.id,body:'Preferências novas preservam conversas existentes'})).status,200);
+});
+await t.test('durable rate limit rejects writes and increments the persisted counter',async()=>{
+ const now=Date.now();const minute=Math.floor(now/60000);
+ // Cover both sides of a minute boundary without timing-dependent bursts.
+ for(const bucket of [minute,minute+1])await DB.prepare('INSERT INTO limits(key,count,expires) VALUES (?,40,?) ON CONFLICT(key) DO UPDATE SET count=40,expires=excluded.expires').bind('mallory:'+bucket,now+120000).run();
+ assert.equal((await call('mallory','pause',{paused:true})).status,429);
+ assert.equal((await call('mallory','me')).body.profile.paused,0);
+ const counters=(await DB.prepare('SELECT count FROM limits WHERE key IN (?,?)').bind('mallory:'+minute,'mallory:'+(minute+1)).all()).results;
+ assert.ok(counters.some(row=>row.count===41));
+});
 });

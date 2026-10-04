@@ -10,3 +10,15 @@ test('PNG real icon accepted, corruption and appended payload denied',async()=>{
 test('streaming body bounded without content length',async()=>{await assert.rejects(readBounded(new Request('https://a.test',{method:'POST',body:'123456'}),5),RangeError);assert.equal((await readBounded(new Request('https://a.test',{method:'POST',body:'1234'}),5)).length,4)});
 
 test('expanded interests accept 24 choices and long movie titles, but bound individual length',()=>{assert.equal(profileSchema.safeParse({...p,interests:Array.from({length:24},(_,i)=>'Hobby '+i)}).success,true);assert.equal(profileSchema.safeParse({...p,interests:['Filme: Três Homens, um Destino']}).success,true);assert.equal(profileSchema.safeParse({...p,interests:['a'.repeat(81)]}).success,false);});
+
+test('preferences and prompts validate age range, enums, count, length and unique questions',()=>{
+ assert.equal(profileSchema.parse(p).ageMin,18);
+ assert.equal(profileSchema.safeParse({...p,ageMin:30,ageMax:20}).success,false);
+ assert.equal(profileSchema.safeParse({...p,ageMin:17}).success,false);
+ assert.equal(profileSchema.safeParse({...p,gender:'fake'}).success,false);
+ const prompt={question:'Meu encontro ideal é…',answer:'Café e cinema'};
+ assert.equal(profileSchema.safeParse({...p,prompts:[prompt]}).success,true);
+ assert.equal(profileSchema.safeParse({...p,prompts:[prompt,prompt]}).success,false);
+ assert.equal(profileSchema.safeParse({...p,prompts:[{...prompt,answer:'a'.repeat(201)}]}).success,false);
+ assert.equal(profileSchema.safeParse({...p,prompts:Array(4).fill(prompt)}).success,false);
+});
