@@ -6,6 +6,8 @@ Piloto de conexões entre estudantes, com versão web e cliente Android instalá
 
 O APK é um cliente Android leve que abre o piloto online em uma Custom Tab gerenciada pelo navegador do aparelho. A interface de perfis/matches/chat continua sendo a aplicação web; não é uma reimplementação nativa dessas telas nem funciona offline. O login e os cookies ficam no navegador. O cliente não recebe senhas ou tokens, não solicita permissões sensíveis.
 
+- Download direto do APK 0.2: https://unimatch-unilins.vercel.app/downloads/UniMatch-0.2.apk
+- Desinstale o APK anterior antes de instalar a versão 0.2 (assinatura debug diferente entre builds).
 - Android 8.0+ (API 26), com navegador HTTPS instalado.
 - APK de teste assinado com chave debug; não é publicação na Play Store. A chave debug não deve ser usada para distribuição final.
 - Não há versão IPA/iOS neste repositório; iPhone usa a versão web instalável.
