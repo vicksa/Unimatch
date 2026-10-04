@@ -1,0 +1,14 @@
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+.next/
+.wrangler/
+.sites-runtime/
+.gradle/
+build/
+local.properties
+*.jks
+*.keystore
+*.tsbuildinfo
