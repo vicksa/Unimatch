@@ -1,0 +1,8 @@
+{
+  "appId": "br.edu.unilins.unimatch",
+  "appName": "UniMatch",
+  "webDir": "www",
+  "android": { "path": "../android", "allowMixedContent": false, "captureInput": true },
+  "server": { "url": "https://unimatch-unilins.vercel.app", "cleartext": false },
+  "loggingBehavior": "debug"
+}

@@ -4,33 +4,36 @@ Piloto de conexões entre estudantes, com versão web e cliente Android instalá
 
 ## APK Android
 
-O APK é um cliente Android leve que abre o piloto online em uma Custom Tab gerenciada pelo navegador do aparelho. A interface de perfis/matches/chat continua sendo a aplicação web; não é uma reimplementação nativa dessas telas nem funciona offline. O login e os cookies ficam no navegador. O cliente não recebe senhas ou tokens, não solicita permissões sensíveis.
+O APK 0.3 usa Capacitor para exibir o UniMatch dentro de uma WebView própria, sem barra de navegador. As telas e a API continuam hospedadas na Vercel e precisam de internet. Login e cookies ficam no aplicativo. O botão Voltar fecha janelas e navega entre telas; seleção de fotos e exportação de dados usam os seletores do Android. Links externos abrem o navegador.
 
-- Download direto do APK 0.2: https://unimatch-unilins.vercel.app/downloads/UniMatch-0.2.apk
-- Desinstale o APK anterior antes de instalar a versão 0.2 (assinatura debug diferente entre builds).
-- Android 8.0+ (API 26), com navegador HTTPS instalado.
-- APK de teste assinado com chave debug; não é publicação na Play Store. A chave debug não deve ser usada para distribuição final.
+- Download direto: https://unimatch-unilins.vercel.app/downloads/UniMatch-0.3.apk
+- Desinstale o APK anterior antes de instalar a versão 0.3 e entre novamente na sua conta. Os dados online permanecem associados à conta.
+- Android 8.0+ (API 26), com Android System WebView atualizado.
+- APK de teste assinado com chave debug; não é publicação na Play Store. Builds de máquinas diferentes podem ter assinaturas diferentes.
 - Não há versão IPA/iOS neste repositório; iPhone usa a versão web instalável.
 - Piloto: https://unimatch-unilins.vercel.app
 - Login por e-mail e senha via Clerk. Google depende da ativação da conexão na instância Production do Clerk. Configure `ADMIN_USER_ID` com o ID Clerk do responsável para habilitar a moderação.
 
 ## Estrutura
 
-- `android/`: projeto Java/Android com launcher, informações de privacidade e integração Custom Tabs.
+- `android/`: projeto Java/Android com Capacitor, navegação e exportação nativa.
+- `mobile/`: dependências Capacitor, configuração da origem HTTPS e página local de inicialização.
 - `web/`: fonte da aplicação web, API, migrações PostgreSQL/Neon, fotos privadas no Vercel Blob e testes.
 
 ## Compilar APK
 
-Instale Java 17, Android SDK 35 e build tools 35.0.0. Configure ANDROID_HOME ou um `android/local.properties` local. Então:
+Instale Node 24, JDK 21, Android SDK 36 e build tools 36.0.0. Configure ANDROID_HOME ou um `android/local.properties` local. Então:
 
 ```sh
+npm --prefix mobile ci
+npm --prefix mobile run sync
 cd android
-./gradlew assembleDebug lintDebug
+bash gradlew assembleDebug lintDebug
 ```
 
 APK em `android/app/build/outputs/apk/debug/app-debug.apk`.
 
-O workflow GitHub Actions está configurado para compilar e disponibiliza `UniMatch-debug.apk` como artifact por 30 dias; não publica release ou na Play Store e não usa credenciais de produção.
+O workflow GitHub Actions está configurado para compilar e disponibiliza `UniMatch-0.3.apk` como artifact por 30 dias; não publica release ou na Play Store e não usa credenciais de produção.
 
 ## Limites de segurança e verificação
 
@@ -56,7 +59,9 @@ vercel deploy --prod
 
 O teste de integração cria e remove um schema PostgreSQL isolado. A migração inicial é idempotente e preserva registros existentes. O piloto antigo permanece intacto; contas ChatGPT e contas Clerk são identidades distintas, e dados antigos não são associados automaticamente por e-mail.
 
-Google: no painel Clerk, abra `unimatch-auth`, selecione Production e habilite Google em SSO connections. Use credenciais OAuth próprias se o painel exigir. Não troque para a instância Development para contornar essa configuração.
+Google não está habilitado. O login Google exige um fluxo em navegador externo, pois o Google não permite OAuth em WebView embutida; não basta habilitar a conexão para usá-lo no APK.
+
+Google na web: no painel Clerk, abra `unimatch-auth`, selecione Production e habilite Google em SSO connections. Use credenciais OAuth próprias se o painel exigir. Não troque para a instância Development para contornar essa configuração.
 
 ## Recomendações por interesses
 
