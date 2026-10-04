@@ -14,6 +14,10 @@ O APK 0.3 usa Capacitor para exibir o UniMatch dentro de uma WebView própria, s
 - Piloto: https://unimatch-unilins.vercel.app
 - Login por e-mail e senha via Clerk. Google depende da ativação da conexão na instância Production do Clerk. Configure `ADMIN_USER_ID` com o ID Clerk do responsável para habilitar a moderação.
 
+## Identidade visual
+
+Logo própria, paleta violeta com superfícies claras e telas organizadas para celular e desktop. A entrada apresenta cadastro/login; a demonstração só abre por escolha explícita e não usa fotos de exemplo. Tokens e regras em `web/DESIGN.md`. As telas do APK 0.3 carregam o novo visual online automaticamente.
+
 ## Estrutura
 
 - `android/`: projeto Java/Android com Capacitor, navegação e exportação nativa.
