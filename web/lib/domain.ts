@@ -8,10 +8,16 @@ export function participant(m:{a:string;b:string}|null,id:string){return !!m&&(m
 export function validOrigin(req:Request){return req.headers.get('origin')===new URL(req.url).origin;}
 export function validatePng(bytes:Uint8Array){
  if(bytes.length<45||bytes.length>2000000||![137,80,78,71,13,10,26,10].every((b,i)=>bytes[i]===b))return false;
- const view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);let pos=8,first=true,data=false,ended=false;
+ const view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);let pos=8,first=true,data=false,ended=false;const colorChunks=new Set<string>();
  while(pos+12<=bytes.length){const len=view.getUint32(pos);if(pos+12+len>bytes.length)return false;const type=String.fromCharCode(...bytes.slice(pos+4,pos+8));if(first&&(type!=='IHDR'||len!==13))return false;
- if(!['IHDR','IDAT','IEND','PLTE','tRNS'].includes(type))return false;
+ if(!['IHDR','IDAT','IEND','PLTE','tRNS','sBIT','sRGB'].includes(type))return false;
  if(type==='IHDR'){if(!first||view.getUint32(pos+8)<1||view.getUint32(pos+12)<1||view.getUint32(pos+8)>1600||view.getUint32(pos+12)>1600)return false;}
+ // WebKit canvas PNGs include these color fields. They carry no photo metadata.
+ if(type==='sBIT'||type==='sRGB'){
+  if(data||colorChunks.has(type))return false;colorChunks.add(type);
+  if(type==='sRGB'&&(len!==1||bytes[pos+8]>3))return false;
+  if(type==='sBIT'){const count=({0:1,2:3,3:3,4:2,6:4} as Record<number,number>)[bytes[25]],depth=bytes[25]===3?8:bytes[24];if(len!==count||Array.from(bytes.subarray(pos+8,pos+8+len)).some(bit=>bit<1||bit>depth))return false;}
+ }
  let crc=0xffffffff;for(let i=pos+4;i<pos+8+len;i++){crc^=bytes[i];for(let j=0;j<8;j++)crc=(crc>>>1)^((crc&1)?0xedb88320:0)}if(((crc^0xffffffff)>>>0)!==view.getUint32(pos+8+len))return false;
  first=false;if(type==='IDAT')data=true;pos+=12+len;if(type==='IEND'){if(len!==0)return false;ended=true;break;}}
  return data&&ended&&pos===bytes.length;
