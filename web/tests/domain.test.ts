@@ -22,3 +22,17 @@ test('preferences and prompts validate age range, enums, count, length and uniqu
  assert.equal(profileSchema.safeParse({...p,prompts:[{...prompt,answer:'a'.repeat(201)}]}).success,false);
  assert.equal(profileSchema.safeParse({...p,prompts:Array(4).fill(prompt)}).success,false);
 });
+
+// Captured from WebKit 26 canvas.toBlob: IHDR, sBIT, sRGB, IDAT, IEND.
+const safariPng = new Uint8Array(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAABHNCSVQICAgIfAhkiAAAAAFzUkdCAK7OHOkAAABHSURBVFiF7c4xAcAgEAAxin8b1fmVwHADHRIFeeZds35s3w6cCFaClWAlWAlWgpVgJVgJVoKVYCVYCVaClWAlWAlWgpVg9QFZtQLzFceb5gAAAABJRU5ErkJggg==', 'base64'));
+function changeColorField(type:string, value:number) {
+ const bytes=safariPng.slice(),view=new DataView(bytes.buffer);let pos=8;
+ while(pos+12<=bytes.length){const len=view.getUint32(pos);if(String.fromCharCode(...bytes.slice(pos+4,pos+8))===type){bytes[pos+8]=value;let crc=0xffffffff;for(let i=pos+4;i<pos+8+len;i++){crc^=bytes[i];for(let bit=0;bit<8;bit++)crc=(crc>>>1)^((crc&1)?0xedb88320:0)}view.setUint32(pos+8+len,(crc^0xffffffff)>>>0);return bytes}pos+=len+12}throw Error('Missing color field');
+}
+test('accept WebKit canvas PNG and reject corruption and invalid color fields', () => {
+ assert.equal(validatePng(safariPng), true);
+ const corrupted=safariPng.slice();corrupted[41]^=1;assert.equal(validatePng(corrupted), false);
+ assert.equal(validatePng(changeColorField('sRGB',4)),false);
+ assert.equal(validatePng(changeColorField('sBIT',0)),false);
+ assert.equal(validatePng(changeColorField('sBIT',9)),false);
+});
